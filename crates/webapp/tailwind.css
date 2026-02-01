@@ -1,0 +1,64 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+@source "./src/**/*.{rs,html,css}";
+
+/*
+ * Nord palette (https://www.nordtheme.com/docs/colors-and-palettes/):
+ *   Polar Night nord0-nord3, Snow Storm nord4-nord6, Frost nord7-nord10, Aurora nord11.
+ *
+ * The app uses the neutral, teal and red scales. These light values are the default. The theme
+ * setting (`dto::theme`, applied by `set_theme`) sets the same variables on the root element at
+ * runtime, so every class follows the chosen colour theme.
+ */
+@theme {
+  --color-neutral-100: #e5e9f0; /* nord5 */
+  --color-neutral-200: #d8dee9; /* nord4 */
+  --color-neutral-300: #cdd4e0;
+  --color-neutral-400: #aeb7c7;
+  --color-neutral-500: #6b7487;
+  --color-neutral-600: #4c566a; /* nord3 */
+  --color-neutral-700: #3b4252; /* nord1 */
+  --color-neutral-800: #2e3440; /* nord0 */
+
+  --color-black: #2e3440; /* nord0 */
+  --color-white: #eceff4; /* nord6 */
+
+  --color-teal-50: #e5eef6;
+  --color-teal-400: #88c0d0; /* nord8 */
+  --color-teal-500: #5e81ac; /* nord10 */
+  --color-teal-600: #4c6a8f;
+  --color-teal-700: #3d5777;
+  --color-teal-900: #2e3f57;
+
+  --color-red-50: #fbeeee;
+  --color-red-400: #e0838b;
+  --color-red-500: #bf616a; /* nord11 */
+  --color-red-600: #a84e57;
+  --color-red-950: #3b2326;
+}
+
+/*
+ * Print (used by "Save as PDF" on the reports page): white paper and black text,
+ * whatever theme is active. The `!important` makes these win over the runtime theme variables.
+ */
+@media print {
+  :root,
+  .dark {
+    --color-neutral-100: #ffffff !important;
+    --color-neutral-200: #ffffff !important;
+    --color-neutral-300: #000000 !important;
+    --color-neutral-400: #555555 !important;
+    --color-neutral-500: #555555 !important;
+    --color-neutral-600: #000000 !important;
+    --color-neutral-700: #ffffff !important;
+    --color-neutral-800: #ffffff !important;
+    --color-black: #000000 !important;
+    --color-white: #ffffff !important;
+    --color-teal-600: #000000 !important;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+}

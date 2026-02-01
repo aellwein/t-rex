@@ -1,0 +1,12 @@
+[package]
+name = "dto"
+version = "0.1.0"
+edition = "2021"
+
+# Shared by the server and the WASM client: keep this free of server-only dependencies.
+[dependencies]
+chrono = { version = "0.4.45", features = ["serde"] }
+serde = { version = "1.0.229", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1.0.154"

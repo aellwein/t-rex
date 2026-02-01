@@ -1,0 +1,18 @@
+[workspace]
+members = ["crates/dto", "crates/webapp", "crates/server", "crates/cli"]
+resolver = "2"
+
+[profile.release]
+opt-level = "z"
+debug = false
+lto = true
+codegen-units = 1
+panic = "abort"
+incremental = false
+
+# Faster release-like build for CI (`--profile ci`): no LTO, parallel codegen units.
+[profile.ci]
+inherits = "release"
+lto = false
+codegen-units = 16
+
