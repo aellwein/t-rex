@@ -8,6 +8,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# Read-only token for every job; the checks need nothing more.
+permissions:
+  contents: read
+
 jobs:
   check:
     name: fmt, clippy, tests and wasm build
