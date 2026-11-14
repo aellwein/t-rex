@@ -1,0 +1,169 @@
+name: Release
+
+# Runs for every tag. The tag is the release version and must be SemVer, for example 1.2.3.
+on:
+  push:
+    tags:
+      - '*'
+
+env:
+  IMAGE: ghcr.io/aellwein/t-rex
+  CHART_REPOSITORY: aellwein/t-rex
+  CHART_NAME: t-rex
+
+permissions:
+  contents: read
+
+jobs:
+  check_tag:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Read the version from the tag
+        id: version
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          if ! echo "$tag" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::tag '$tag' is not a SemVer version, for example 1.2.3"
+            exit 1
+          fi
+          echo "version=$tag" >> "$GITHUB_OUTPUT"
+
+  # Each architecture is built on a runner of its own kind, so no emulation is needed.
+  # The images are pushed by digest only; the merge job combines them into one tag.
+  image:
+    needs: check_tag
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: ${{ matrix.platform }}
+          provenance: false
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export the digest
+        run: |
+          mkdir -p "${RUNNER_TEMP}/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${RUNNER_TEMP}/digests/${digest#sha256:}"
+
+      - name: Upload the digest
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digests-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Combines the per-architecture images into one multi-arch image under the release tag.
+  image_manifest:
+    needs: [check_tag, image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.manifest.outputs.digest }}
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download the digests
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Create the multi-arch manifest
+        id: manifest
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          sources=$(for d in *; do printf '%s@sha256:%s ' "$IMAGE" "$d"; done)
+          docker buildx imagetools create --tag "$IMAGE:${{ needs.check_tag.outputs.version }}" $sources
+          digest=$(docker buildx imagetools inspect "$IMAGE:${{ needs.check_tag.outputs.version }}" --format '{{.Manifest.Digest}}')
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "Multi-arch image digest: ${digest}"
+        env:
+          IMAGE: ${{ env.IMAGE }}
+
+  chart:
+    needs: [check_tag, image_manifest]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The chart version and app version are the release version. The image is pinned by digest.
+      - name: Prepare the Helm chart
+        run: |
+          yq e -i ".appVersion = \"${{ needs.check_tag.outputs.version }}\"" chart/Chart.yaml
+          yq e -i ".version = \"${{ needs.check_tag.outputs.version }}\"" chart/Chart.yaml
+          yq -e -i ".image.hash = \"${{ needs.image_manifest.outputs.digest }}\"" chart/values.yaml
+
+      - name: Import GPG key
+        id: gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      # Helm requires the legacy GPG format
+      # @link https://helm.sh/docs/topics/provenance/#the-workflow
+      - name: Convert GPG v2 key
+        run: |
+          gpg --export > ~/.gnupg/pubring.gpg
+          gpg --batch --pinentry-mode loopback --yes --passphrase '${{ secrets.GPG_PASSPHRASE }}' --export-secret-key > ~/.gnupg/secring.gpg
+
+      - name: Push and sign the OCI chart
+        uses: appany/helm-oci-chart-releaser@d94988c92bed2e09c6113981f15f8bb495d10943 # v0.5.0
+        with:
+          name: ${{ env.CHART_NAME }}
+          registry: ghcr.io
+          repository: ${{ env.CHART_REPOSITORY }}
+          tag: ${{ needs.check_tag.outputs.version }}
+          path: chart
+          registry_username: ${{ github.actor }}
+          registry_password: ${{ secrets.GITHUB_TOKEN }}
+          sign: true
+          signing_key: ${{ steps.gpg.outputs.name }}
+          signing_passphrase: ${{ secrets.GPG_PASSPHRASE }}

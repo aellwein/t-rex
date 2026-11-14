@@ -12,3 +12,9 @@ updates:
     directory: "/"
     schedule:
       interval: daily
+
+  # Base images of the Dockerfile, including the digest of the runtime image.
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: daily
