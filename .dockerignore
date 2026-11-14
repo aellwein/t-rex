@@ -1,0 +1,5 @@
+# Build output stays out of the build context. The git metadata stays in: the build reads the version from it.
+target/
+**/target/
+chart/
+docs/
