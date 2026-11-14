@@ -1,0 +1,14 @@
+t-rex is installed as {{ include "t-rex.fullname" . }}.
+
+{{- if .Values.httpRoute.enabled }}
+The app is routed on: {{ join ", " .Values.httpRoute.hostnames }}
+{{- else }}
+Open it with a port forward until a route is configured:
+
+  kubectl port-forward svc/{{ include "t-rex.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+
+then visit http://localhost:{{ .Values.service.port }}.
+{{- end }}
+
+The app signs users in through the OpenID Connect provider in oidc.issuer. The redirect URI
+registered there must be {{ "<APP_URL>/auth/callback" }}.

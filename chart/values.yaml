@@ -1,0 +1,88 @@
+# Default values for the t-rex chart. Everything can be overridden with --set or a values file.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/aellwein/t-rex
+  # The release process sets `hash` to the image digest. Set `tag` to use a tag instead.
+  tag: ""
+  hash: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# Log level of the server (RUST_LOG).
+logLevel: info
+
+# Sign-in with an OpenID Connect provider. Either name an existing secret with the keys
+# ISSUER, CLIENT_ID, CLIENT_SECRET, COOKIE_SECRET and APP_URL, or set the values below and the
+# chart creates the secret. The cookie secret must stay the same across upgrades.
+oidc:
+  existingSecret: ""
+  issuer: ""
+  clientId: ""
+  clientSecret: ""
+  cookieSecret: ""
+  # Public address of the app, for example https://t-rex.example.com.
+  appUrl: ""
+
+database:
+  # Empty: SQLite file on a persistent volume (see persistence).
+  # Set to postgres://USER@HOST:PORT/DB to use Postgres. Never put the password in this URL.
+  url: ""
+  # Existing secret with the key `password`. Used only when `url` is set.
+  existingSecret: ""
+  # Postgres password, used when `url` is set and `existingSecret` is empty.
+  password: ""
+
+persistence:
+  # SQLite mode only: the volume that holds the database file.
+  size: 1Gi
+  # Empty uses the cluster's default storage class.
+  storageClassName: ""
+  mountPath: /data
+
+service:
+  type: ClusterIP
+  port: 8080
+
+serviceAccount:
+  create: true
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+resources: {}
+  # limits:
+  #   cpu: 500m
+  #   memory: 256Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Gateway API route to the app. Needs a Gateway in the cluster.
+httpRoute:
+  enabled: false
+  parentRefs: []
+  #  - name: my-gateway
+  #    namespace: gateway-system
+  #    sectionName: websecure
+  hostnames: []
+  #  - t-rex.example.com
