@@ -1,3 +1,7 @@
+// The `Routable` derive emits code after a call that never returns, which trips `unreachable_code`.
+// The warning comes from the generated code, so the allow covers the whole module.
+#![allow(unreachable_code)]
+
 use dioxus::prelude::*;
 use dioxus_i18n::{prelude::*, t};
 
