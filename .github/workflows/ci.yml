@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: fmt, clippy, tests and wasm build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: t_rex
+          POSTGRES_PASSWORD: t_rex
+          POSTGRES_DB: t_rex_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U t_rex"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # The ignored Postgres tests in server/src/db.rs and store/api_tokens.rs read this.
+      TEST_POSTGRES_URL: postgres://t_rex:t_rex@localhost:5432/t_rex_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Its only release is v1, so the toolchain is an input here instead of part of the action name.
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      # The server build runs `dx bundle` to embed the web app, so the Dioxus CLI must be on the PATH.
+      - name: Install Dioxus CLI
+        uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
+        with:
+          tool: dioxus-cli@0.7.10
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace
+
+      # Both tests share one database and expect it empty, so they run one after the other.
+      - name: Test Postgres
+        run: cargo test -p server -- --ignored --test-threads=1
+
+      - name: Build web app (wasm)
+        run: cargo build -p webapp --target wasm32-unknown-unknown
