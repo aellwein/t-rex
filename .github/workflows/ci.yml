@@ -52,15 +52,26 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
 
+      # Builds the server once. The build script runs `dx bundle` for the embedded web app here,
+      # so the steps after it reuse that output instead of building the web app again.
+      - name: Build
+        run: cargo build --workspace
+
+      - name: Build web app (wasm)
+        run: cargo build -p webapp --target wasm32-unknown-unknown
+
       - name: Clippy
+        env:
+          T_REX_SKIP_WEBAPP: "1"
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Test
+        env:
+          T_REX_SKIP_WEBAPP: "1"
         run: cargo test --workspace
 
       # Both tests share one database and expect it empty, so they run one after the other.
       - name: Test Postgres
+        env:
+          T_REX_SKIP_WEBAPP: "1"
         run: cargo test -p server -- --ignored --test-threads=1
-
-      - name: Build web app (wasm)
-        run: cargo build -p webapp --target wasm32-unknown-unknown
