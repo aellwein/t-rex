@@ -26,6 +26,10 @@ mod entity;
 mod migration;
 mod store;
 
+/// How long a browser sign-in lasts without activity, in minutes. The session cookie and the
+/// server-side session both use this, so they expire together.
+const SESSION_MINUTES: i64 = 12 * 60;
+
 /// Main entry point. Setup and run the server.
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -47,13 +51,20 @@ async fn main() -> Result<()> {
         .with_client_secret(client_secret.as_str())
         .with_redirect_uri(format!("{app_url}/auth/callback").as_str())
         .with_private_cookie_key(cookie_secret.as_str())
-        .with_session_max_age(30)
+        .with_session_max_age(SESSION_MINUTES)
         .with_scopes(vec!["openid", "profile", "email"])
         .with_post_logout_redirect_uri("/")
         .build()?;
 
-    let cache: Arc<dyn AuthCache + Send + Sync> =
-        Arc::new(TwoTierAuthCache::new(None, TwoTierCacheConfig::default())?);
+    let cache: Arc<dyn AuthCache + Send + Sync> = Arc::new(TwoTierAuthCache::new(
+        None,
+        TwoTierCacheConfig {
+            // The in-memory session lives as long as the cookie. The library reads this value
+            // in seconds and resets it on every request, so the session is idle-based like the cookie.
+            l1_ttl_sec: (SESSION_MINUTES * 60) as u64,
+            ..TwoTierCacheConfig::default()
+        },
+    )?);
 
     let logout_handler = Arc::new(DefaultLogoutHandler);
 
