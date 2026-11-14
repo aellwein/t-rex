@@ -1,0 +1,14 @@
+version: 2
+
+updates:
+  # Action versions in .github/workflows, including the commit SHAs they are pinned to.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: daily
+
+  # Crates of the workspace (Cargo.toml and Cargo.lock at the root cover all members).
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: daily
