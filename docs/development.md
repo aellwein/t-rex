@@ -76,3 +76,23 @@ When you add a list endpoint, page it with `PageQuery` and return `Page<T>`, lik
 2. Keep it compatible with the previous app version: a rolling update runs both at once.
 3. Write the SQL for both SQLite and Postgres, as the baseline does.
 4. Run the tests on SQLite, and the ignored Postgres test if the change touches Postgres-specific behaviour.
+
+## Releasing
+
+A release is a tag. Use a SemVer version without a `v` prefix, because Helm chart versions must be SemVer:
+
+```sh
+git tag 1.2.3
+git push origin 1.2.3
+```
+
+The `Release` workflow (`.github/workflows/release.yml`) then:
+
+1. builds the image for `linux/amd64` and `linux/arm64`, each on a runner of its own architecture;
+2. publishes one multi-arch image as `ghcr.io/aellwein/t-rex:1.2.3`;
+3. sets the chart version and app version to the tag, and the image to the image digest;
+4. pushes the chart to `oci://ghcr.io/aellwein/t-rex/t-rex:1.2.3`, signed with GPG.
+
+The workflow needs these repository secrets: `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE`. The registry is written with the built-in `GITHUB_TOKEN`. The first release creates the packages; set them to public in the package settings if others should pull them without signing in.
+
+A tag that is not SemVer fails the workflow before anything is built.
