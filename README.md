@@ -10,6 +10,7 @@ Track the time you spend on projects and your time off (absences), day by day. A
 | `crates/server/`     | Axum REST API under `/api/v1`, SQLite or Postgres through SeaORM, OIDC login, serves the web app. |
 | `crates/webapp/`     | Dioxus WASM client (single page app, responsive). |
 | `crates/cli/`        | Command line client `t-rex` (clap), talks to the REST API. |
+| `chart/`      | Helm chart to run the server on Kubernetes. |
 | `docs/`       | Documentation, see below. |
 
 ## Quick start
@@ -23,6 +24,19 @@ ISSUER=... CLIENT_ID=... CLIENT_SECRET=... COOKIE_SECRET=... cargo run -p server
 ```
 
 Then open `http://localhost:8080`.
+
+## Helm chart
+
+Each release publishes the chart and the image. Install the release with:
+
+```sh
+helm install t-rex oci://ghcr.io/aellwein/t-rex/t-rex --version 1.2.3 \
+  --set oidc.issuer=https://idp.example.com \
+  --set oidc.clientId=... --set oidc.clientSecret=... \
+  --set oidc.cookieSecret=... --set oidc.appUrl=https://t-rex.example.com
+```
+
+See [chart/README.md](chart/README.md) for the values. Use `oidc.existingSecret` and `database.existingSecret` to keep secrets out of the command line.
 
 ## Documentation
 
