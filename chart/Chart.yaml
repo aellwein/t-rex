@@ -5,11 +5,33 @@ type: application
 version: 0.0.0 # replaced with the release version by the release process
 appVersion: "0.0.0" # replaced with the release version by the release process
 home: https://github.com/aellwein/t-rex
+icon: https://raw.githubusercontent.com/aellwein/t-rex/main/crates/webapp/assets/images/favicon.ico
 sources:
   - https://github.com/aellwein/t-rex
 keywords:
   - time tracking
   - timesheet
+  - absences
   - oidc
+  - dioxus
 annotations:
   artifacthub.io/license: MIT
+  artifacthub.io/maintainers: |
+    - name: Alex Ellwein
+      email: alex.ellwein@gmail.com
+  artifacthub.io/containsSecurityUpdates: "false"
+  # kinds: added, changed, deprecated, removed, fixed, security.
+  artifacthub.io/changes: |
+    - kind: added
+      description: "first release: record working time per project and absences, day by day, in a responsive web app"
+    - kind: added
+      description: "command line client t-rex with the same features as the web app, token sign-in and shell completion"
+    - kind: added
+      description: "REST API under /api/v1 with OpenID Connect sign-in"
+    - kind: added
+      description: "SQLite or Postgres storage"
+    - kind: added
+      description: "Helm chart and multi-architecture container image (linux/amd64, linux/arm64)"
+  artifacthub.io/signKey: |
+    fingerprint: "FA1F0CE58313D2638809BD05D51650A7D1BE5944"
+    url: https://gist.githubusercontent.com/aellwein/112e7c157c4f60165b62602b2b62c2d7/raw/491cc2925f43ddb015d63c95f5ea2bca1f281c8c/pubkey.asc
