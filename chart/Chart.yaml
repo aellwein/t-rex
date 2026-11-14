@@ -1,0 +1,15 @@
+apiVersion: v2
+name: t-rex
+description: Helm chart for t-rex, a web app and API to track working time
+type: application
+version: 0.0.0 # replaced with the release version by the release process
+appVersion: "0.0.0" # replaced with the release version by the release process
+home: https://github.com/aellwein/t-rex
+sources:
+  - https://github.com/aellwein/t-rex
+keywords:
+  - time tracking
+  - timesheet
+  - oidc
+annotations:
+  artifacthub.io/license: MIT

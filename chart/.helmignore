@@ -1,0 +1,8 @@
+# Files Helm ignores when it packages the chart.
+.DS_Store
+.git/
+.gitignore
+*.swp
+*.bak
+*.tmp
+*.orig
