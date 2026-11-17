@@ -8,7 +8,7 @@ use dto::{
     AbsenceKind, AbsenceKindInput, BlockError, DurationUnit, Holiday, HolidayImport,
     HolidayImportResult, HolidayImportText, HolidayInput, Language, PendingStart, Project,
     ProjectInput, Settings, TimeBlock, TimeEntry, TimeEntryInput, TokenInfo, builtin_themes,
-    duration_minutes, duration_text, format_clock, parse_clock, parse_signed_hours, resolve_block,
+    duration_minutes, format_clock, parse_clock, parse_signed_hours, resolve_block,
 };
 use reqwest::Method;
 
@@ -20,6 +20,7 @@ use crate::{
     client::Client,
     config::{self, Config},
     login, output,
+    template::{self, EntryRow, Template},
 };
 
 /// Runs the command. Errors are shown to the user as they are.
@@ -344,7 +345,21 @@ fn entry(client: &Client, command: EntryCommand) -> Result<()> {
             to,
             sort,
             reverse,
-        } => list_entries(client, from, to, sort, reverse),
+            limit,
+            offset,
+            all,
+            format,
+        } => list_entries(
+            client,
+            ListOptions {
+                from,
+                to,
+                sort,
+                reverse,
+                page: (!all).then_some((limit as usize, offset as usize)),
+                format,
+            },
+        ),
         EntryCommand::Add(fields) => add_entry(client, fields),
         EntryCommand::Edit { id, fields } => edit_entry(client, id, fields),
         EntryCommand::Remove { id } => {
@@ -375,19 +390,68 @@ fn sort_entries(entries: &mut [(TimeEntry, String)], sort: EntrySort, reverse: b
     });
 }
 
-fn list_entries(
-    client: &Client,
+/// What `entry list` shows: the period, the order, the page and the output format.
+struct ListOptions {
     from: Option<String>,
     to: Option<String>,
     sort: EntrySort,
     reverse: bool,
-) -> Result<()> {
+    /// `(limit, offset)` of the page, or `None` for every record.
+    page: Option<(usize, usize)>,
+    format: Option<String>,
+}
+
+/// The default `entry list` output: one aligned table with the common columns.
+const DEFAULT_FORMAT: &str =
+    "table {{.ID}}\t{{.Date}}\t{{.Start}}\t{{.End}}\t{{.Hours}}\t{{.Break}}\t{{.What}}\t{{.Note}}";
+
+/// One time record as the output needs it: times as `hh:mm`, the project or absence by name.
+fn entry_row(entry: &TimeEntry, what: &str) -> EntryRow {
+    let end = entry
+        .start_minute
+        .map(|start| format_clock((start + entry.minutes + entry.break_minutes) % 1440))
+        .unwrap_or_else(|| "-".into());
+    EntryRow {
+        id: entry.id,
+        date: entry.date.to_string(),
+        start: entry
+            .start_minute
+            .map(format_clock)
+            .unwrap_or_else(|| "-".into()),
+        end,
+        hours: format_clock(entry.minutes),
+        break_time: format_clock(entry.break_minutes),
+        what: what.to_string(),
+        note: entry.note.clone(),
+    }
+}
+
+/// The `[first, last)` range of the sorted records that a page shows. Without a page, all of them.
+fn page_bounds(total: usize, page: Option<(usize, usize)>) -> (usize, usize) {
+    match page {
+        None => (0, total),
+        Some((limit, offset)) => {
+            let first = offset.min(total);
+            (first, first.saturating_add(limit).min(total))
+        }
+    }
+}
+
+fn list_entries(client: &Client, options: ListOptions) -> Result<()> {
+    // Check the format before the server is asked for anything.
+    let json = options.format.as_deref() == Some("json");
+    let template = match (&options.format, json) {
+        (_, true) => None,
+        (Some(text), false) => Some(Template::parse(text)?),
+        (None, false) => Some(Template::parse(DEFAULT_FORMAT)?),
+    };
+
     let today = Local::now().date_naive();
-    let from = match from {
+    let from = match options.from {
         Some(text) => parse_date(&text)?,
         None => today.with_day(1).context("invalid date")?,
     };
-    let to = match to {
+    let to = match options.to {
         Some(text) => parse_date(&text)?,
         None => last_day_of_month(from),
     };
@@ -408,28 +472,33 @@ fn list_entries(
             (e, what)
         })
         .collect();
-    sort_entries(&mut named, sort, reverse);
+    sort_entries(&mut named, options.sort, options.reverse);
 
-    let rows: Vec<Vec<String>> = named
+    // The page is cut from the sorted list, so `--sort hours --limit 10` gives the ten longest.
+    let total = named.len();
+    let (first, last) = page_bounds(total, options.page);
+    let rows: Vec<EntryRow> = named[first..last]
         .iter()
-        .map(|(e, what)| {
-            vec![
-                e.id.to_string(),
-                e.date.to_string(),
-                e.start_minute
-                    .map(format_clock)
-                    .unwrap_or_else(|| "-".into()),
-                duration_text(e.minutes, DurationUnit::Hours),
-                duration_text(e.break_minutes, DurationUnit::Minutes),
-                what.clone(),
-                e.note.clone(),
-            ]
-        })
+        .map(|(entry, what)| entry_row(entry, what))
         .collect();
-    output::table(
-        &["ID", "DATE", "START", "HOURS", "BREAK", "WHAT", "NOTE"],
-        &rows,
-    );
+
+    match template {
+        None => println!(
+            "{}",
+            serde_json::to_string_pretty(&template::to_json(&rows))?
+        ),
+        Some(template) => template.print(&rows),
+    }
+    // The paging hints go to stderr, so piped output stays clean.
+    if options.page.is_some() && rows.is_empty() && total > 0 {
+        eprintln!("No records at offset {first}; {total} in total.");
+    } else if options.page.is_some() && last < total {
+        eprintln!(
+            "Showing {}-{} of {total}. Next page: --offset {last}, or --all.",
+            first + 1,
+            last
+        );
+    }
     Ok(())
 }
 
@@ -703,11 +772,8 @@ fn settings(client: &Client, command: SettingsCommand) -> Result<()> {
     match command {
         SettingsCommand::Show => {
             let s: Settings = client.get("/api/v1/settings")?;
-            println!(
-                "daily-hours  {}",
-                duration_text(s.daily_minutes, DurationUnit::Hours)
-            );
-            println!("break        {} min", s.break_minutes);
+            println!("daily-hours  {}", format_clock(s.daily_minutes));
+            println!("break        {}", format_clock(s.break_minutes));
             println!("language     {}", s.language.as_str());
             println!("theme        {}", s.theme);
             println!("show-email   {}", s.show_email);
@@ -768,8 +834,8 @@ fn apply_setting(s: &mut Settings, key: SettingKey, value: &str) -> Result<()> {
 
 fn value_of(s: &Settings, key: SettingKey) -> String {
     match key {
-        SettingKey::DailyHours => duration_text(s.daily_minutes, DurationUnit::Hours),
-        SettingKey::Break => format!("{} min", s.break_minutes),
+        SettingKey::DailyHours => format_clock(s.daily_minutes),
+        SettingKey::Break => format_clock(s.break_minutes),
         SettingKey::Language => s.language.as_str().to_string(),
         SettingKey::Theme => s.theme.clone(),
         SettingKey::ShowEmail => s.show_email.to_string(),
@@ -994,6 +1060,34 @@ mod sort_tests {
             absence_kind_id: None,
             note: String::new(),
         }
+    }
+
+    #[test]
+    fn a_page_is_cut_from_the_sorted_list() {
+        assert_eq!(page_bounds(25, Some((10, 0))), (0, 10));
+        assert_eq!(page_bounds(25, Some((10, 10))), (10, 20));
+        assert_eq!(page_bounds(25, Some((10, 20))), (20, 25));
+        assert_eq!(page_bounds(25, Some((10, 30))), (25, 25));
+        assert_eq!(page_bounds(25, None), (0, 25));
+    }
+
+    #[test]
+    fn an_entry_row_shows_end_and_times_as_hours_and_minutes() {
+        let mut e = entry(3, 2, Some(9 * 60), 450);
+        e.break_minutes = 45;
+        let row = entry_row(&e, "Website");
+        assert_eq!(row.start, "09:00");
+        assert_eq!(row.end, "17:15");
+        assert_eq!(row.hours, "07:30");
+        assert_eq!(row.break_time, "00:45");
+        assert_eq!(row.what, "Website");
+    }
+
+    #[test]
+    fn a_record_without_start_has_no_end() {
+        let row = entry_row(&entry(3, 2, None, 60), "Web");
+        assert_eq!(row.start, "-");
+        assert_eq!(row.end, "-");
     }
 
     fn ids(entries: &[(TimeEntry, String)]) -> Vec<i64> {

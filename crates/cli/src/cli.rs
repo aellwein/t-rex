@@ -147,6 +147,8 @@ pub enum EntrySort {
 #[derive(Debug, Subcommand)]
 pub enum EntryCommand {
     /// List time records of a period, by default the current month, sorted by date.
+    ///
+    /// Shows the first 10 records. Use --offset to see the next ones, or --all for every record.
     List {
         /// First day, YYYY-MM-DD.
         #[arg(long, value_name = "DATE")]
@@ -160,6 +162,21 @@ pub enum EntryCommand {
         /// Sort in descending order.
         #[arg(long)]
         reverse: bool,
+        /// Records per page.
+        #[arg(long, value_name = "N", default_value_t = 10, value_parser = clap::value_parser!(u32).range(1..))]
+        limit: u32,
+        /// Records to skip, to see the next page.
+        #[arg(long, value_name = "N", default_value_t = 0)]
+        offset: u32,
+        /// Show every record, without paging.
+        #[arg(long, conflicts_with_all = ["limit", "offset"])]
+        all: bool,
+        /// Output format. `table` (default), `json`, or a template such as
+        /// "{{.Date}} {{.Hours}} {{.What}}". Start a template with "table " to print a header and
+        /// aligned columns, and separate columns with \t. Fields: ID, Date, Start, End, Hours,
+        /// Break, What, Note.
+        #[arg(long, value_name = "FORMAT")]
+        format: Option<String>,
     },
     /// Add a time record. Give two of start, end and duration; the third is worked out.
     Add(EntryFields),
