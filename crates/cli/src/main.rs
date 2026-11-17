@@ -7,6 +7,7 @@ mod complete;
 mod config;
 mod login;
 mod output;
+mod template;
 
 use std::process::ExitCode;
 
