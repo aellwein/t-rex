@@ -650,8 +650,40 @@ pub fn ReportsPage() -> Element {
                 })
                 .collect();
 
+            // Target: working days of the month (no weekends, no holidays) times the daily working time.
+            // Actual: project work plus paid absence, as in the balance table.
+            let month_start =
+                NaiveDate::from_ymd_opt(selected_year, month_pick(), 1).unwrap_or(today);
+            let month_end = add_months(month_start, 1).pred_opt().unwrap_or(month_start);
+            let target = weekdays_between(month_start, month_end, &holidays_now) * daily;
+            let actual = actual_minutes(&entries_now, &kinds_now, month_start, month_end);
+            let difference = actual as i32 - target as i32;
+            let target_row = t!("report-target-hours");
+            let actual_row = t!("report-actual-hours");
+            let difference_row = t!("report-difference");
+            let balance_title_text = t!("report-balance-title");
+
             rsx! {
                 div { class: "flex flex-col gap-6", {day_sections.into_iter()} }
+                section { class: "mt-6",
+                    h2 { class: "font-bold mb-1", {balance_title_text} }
+                    table { class: "min-w-full text-sm border-collapse",
+                        tbody {
+                            tr { class: "border-t border-neutral-200 dark:border-neutral-600",
+                                th { class: "px-2 py-1 text-left font-medium", {target_row} }
+                                td { class: "px-2 py-1 text-right tabular-nums", {format_duration(target)} }
+                            }
+                            tr { class: "border-t border-neutral-200 dark:border-neutral-600",
+                                th { class: "px-2 py-1 text-left font-medium", {actual_row} }
+                                td { class: "px-2 py-1 text-right tabular-nums", {format_duration(actual)} }
+                            }
+                            tr { class: "border-t-2 border-neutral-400 dark:border-neutral-500",
+                                th { class: "px-2 py-1 text-left font-bold", {difference_row} }
+                                td { class: "px-2 py-1 text-right tabular-nums font-bold", {format_signed_hours(difference)} }
+                            }
+                        }
+                    }
+                }
                 section { class: "mt-6",
                     h2 { class: "font-bold mb-1", {totals_title} }
                     table { class: "min-w-full text-sm border-collapse",
