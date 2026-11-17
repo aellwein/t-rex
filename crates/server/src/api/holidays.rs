@@ -18,11 +18,14 @@ use super::{ApiError, ApiResult, AppState, CurrentUser};
 use crate::store::holidays as store;
 
 /// Largest calendar file accepted, from an address or pasted.
+/// Largest calendar file accepted, from an address or pasted: 5 MB.
 const MAX_ICS_BYTES: usize = 5 * 1024 * 1024;
 
 /// Longest multi-day event that is expanded into single holidays.
+/// Most days a multi-day event adds as holidays. A longer event adds only its first 366 days.
 const MAX_SPAN_DAYS: i64 = 366;
 
+/// Lists the holidays of the user, one page at a time. See [`PageQuery`] for the paging parameters.
 pub async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -32,6 +35,7 @@ pub async fn list(
     Ok(Json(store::list(&state.conn, &user, window).await?))
 }
 
+/// Creates a holiday. Answers `201 Created`, or `409 Conflict` if the day already is a holiday of the user.
 pub async fn create(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -44,6 +48,7 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(holiday)))
 }
 
+/// Returns one holiday of the user, or `404 Not Found`.
 pub async fn get_one(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -55,6 +60,7 @@ pub async fn get_one(
         .ok_or(ApiError::NotFound)
 }
 
+/// Replaces a holiday. The day may stay the same. Answers `409` if another holiday is already on the new day.
 pub async fn update(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -70,6 +76,7 @@ pub async fn update(
         .ok_or(ApiError::NotFound)
 }
 
+/// Deletes a holiday. Answers `204 No Content`, or `404` if the holiday is not the user's.
 pub async fn delete(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -192,6 +199,7 @@ async fn fetch_calendar(url: reqwest::Url) -> ApiResult<String> {
 }
 
 /// Rejects a second holiday on the same day. `except` is the holiday being edited.
+/// Rejects a second holiday on the same day. `except` is the holiday being edited, so it may keep its day.
 async fn ensure_free_day(
     state: &AppState,
     user: &str,

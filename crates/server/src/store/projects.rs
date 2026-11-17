@@ -11,6 +11,7 @@ use sea_orm::{
 use crate::entity::project::{ActiveModel, Column, Entity as Projects, Model};
 use crate::store::{Window, fetch_window, page};
 
+/// Converts a stored row into the DTO.
 fn from_model(model: Model) -> Project {
     Project {
         id: model.id,
@@ -43,6 +44,7 @@ pub async fn get(conn: &DatabaseConnection, user: &str, id: i64) -> Result<Optio
     Ok(model.map(from_model))
 }
 
+/// Inserts a project for the user and returns it with its id. A duplicate name fails with a unique-constraint error, which the API answers with `409`.
 pub async fn create(
     conn: &DatabaseConnection,
     user: &str,

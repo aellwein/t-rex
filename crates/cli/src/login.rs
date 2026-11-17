@@ -48,6 +48,7 @@ pub fn sign_in(server: &str, device: &str) -> Result<CreatedToken> {
     )
 }
 
+/// A random value for the login. The browser must send it back unchanged, which protects the login from forged callbacks.
 fn random_state() -> String {
     let mut bytes = [0u8; 16];
     rand::fill(&mut bytes);
@@ -123,6 +124,7 @@ fn read_callback(stream: &mut TcpStream, state: &str) -> Result<String> {
     code.context("the callback has no code")
 }
 
+/// Answers the browser on the local listener with a short HTML page that shows `message`.
 fn respond(stream: &mut TcpStream, message: &str) {
     let body =
         format!("<!doctype html><meta charset=\"utf-8\"><title>t-rex</title><p>{message}</p>");

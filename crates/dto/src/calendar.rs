@@ -7,6 +7,15 @@ use chrono::{Datelike, NaiveDate};
 ///
 /// # Panics
 /// If `year`/`month` do not form a valid calendar month.
+/// # Examples
+///
+/// ```
+/// use chrono::NaiveDate;
+/// use dto::calendar::clamped_date;
+///
+/// assert_eq!(clamped_date(2024, 2, 31), NaiveDate::from_ymd_opt(2024, 2, 29).unwrap());
+/// assert_eq!(clamped_date(2026, 4, 15), NaiveDate::from_ymd_opt(2026, 4, 15).unwrap());
+/// ```
 pub fn clamped_date(year: i32, month: u32, day: u32) -> NaiveDate {
     let first = NaiveDate::from_ymd_opt(year, month, 1).expect("valid year and month");
     let last_day = first.num_days_in_month() as u32;
@@ -16,6 +25,18 @@ pub fn clamped_date(year: i32, month: u32, day: u32) -> NaiveDate {
 }
 
 /// Moves a date by whole calendar months, keeping the day where possible.
+/// Negative `delta` moves back. Years roll over, and the day is clamped to the length of the month.
+///
+/// # Examples
+///
+/// ```
+/// use chrono::NaiveDate;
+/// use dto::calendar::add_months;
+///
+/// let jan31 = NaiveDate::from_ymd_opt(2026, 1, 31).unwrap();
+/// assert_eq!(add_months(jan31, 1), NaiveDate::from_ymd_opt(2026, 2, 28).unwrap());
+/// assert_eq!(add_months(jan31, -2), NaiveDate::from_ymd_opt(2025, 11, 30).unwrap());
+/// ```
 pub fn add_months(date: NaiveDate, delta: i32) -> NaiveDate {
     let total = date.year() * 12 + date.month0() as i32 + delta;
     let year = total.div_euclid(12);

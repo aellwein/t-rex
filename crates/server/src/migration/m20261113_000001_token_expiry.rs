@@ -6,6 +6,7 @@ use sea_orm_migration::prelude::*;
 use sea_orm_migration::sea_orm::{ConnectionTrait, Statement};
 
 #[derive(DeriveMigrationName)]
+/// Adds the expiry of tokens. Tokens that exist already expire ten days after this migration.
 pub struct Migration;
 
 /// Ten days in seconds, the lifetime of a token at the time of this migration.

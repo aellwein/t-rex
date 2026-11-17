@@ -1,3 +1,7 @@
+//! The web app: a single page app that the browser loads from the server.
+//!
+//! Starts the app, sets up the translations and the global state that is kept in the browser, and renders the routes.
+
 use dioxus::logger::tracing::Level;
 use dioxus::prelude::*;
 use dioxus_i18n::prelude::*;
@@ -8,22 +12,33 @@ use crate::common::prelude::*;
 use crate::components::prelude::*;
 use crate::routes::Route;
 
+/// The HTTP client for the REST API.
 mod api;
+/// Shared types and browser helpers.
 mod common;
+/// Reusable components of the pages.
 mod components;
+/// The pages, one per route.
 mod pages;
+/// The routes and the layout of the app.
 mod routes;
 
+/// The icon of the browser tab, bundled with the app.
 const FAVICON: Asset = asset!("/assets/images/favicon.ico");
+/// The stylesheet of the app, generated for Tailwind's classes.
 const APP_CSS: Asset = asset!("/assets/css/app.css");
+/// The key under which the app state is kept in the browser's local storage.
 const STORAGE_KEY: &str = "t-rex.state";
+/// The app state that all pages read and change. It is saved to local storage on change.
 pub static STATE: GlobalSignal<AppState> = Signal::global(AppState::default);
 
+/// Starts the app in the browser.
 fn main() {
     dioxus::logger::init(Level::INFO).expect("unable to init logger");
     dioxus::launch(App);
 }
 
+/// The translations: English is the fallback, and every other language has its own translation file.
 fn i18n_config() -> I18nConfig {
     I18nConfig::new(langid!("en"))
         .with_locale((langid!("en"), include_str!("../i18n/en.ftl")))
@@ -40,6 +55,7 @@ fn i18n_config() -> I18nConfig {
 }
 
 #[component]
+/// The root component. It loads the saved state and the translations, then renders the routes.
 fn App() -> Element {
     use_init_i18n(i18n_config);
 

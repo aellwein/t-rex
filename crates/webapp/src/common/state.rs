@@ -1,9 +1,13 @@
+//! The state that the app keeps in the browser's local storage: the theme, the language, the selected day
+//! and the header's email display.
+
 use chrono::{Local, NaiveDate};
 use serde::{Deserialize, Serialize};
 
 use crate::common::prelude::*;
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+/// The state kept in the browser: theme, language, selected day, and the header's email display.
 pub struct AppState {
     /// `system`, or the id of a colour theme. See `dto::theme`.
     pub theme: String,

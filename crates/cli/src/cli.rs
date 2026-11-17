@@ -14,6 +14,7 @@ use crate::complete;
     arg_required_else_help = true,
     propagate_version = true
 )]
+/// Command line arguments of `t-rex`. The global `--server` option, or the `T_REX_SERVER` variable, overrides the saved server address.
 pub struct Cli {
     /// Address of the t-rex server. Saved by `login`.
     #[arg(long, global = true, env = "T_REX_SERVER", value_name = "URL")]
@@ -24,10 +25,11 @@ pub struct Cli {
 }
 
 #[derive(Debug, Subcommand)]
+/// The top-level commands. Each one is a noun that groups its verbs, such as `entry list`, or a single action such as `login`.
 pub enum Command {
     /// Sign in through the browser and save the token on this computer.
     Login {
-        /// Name shown for this token in the token list. Defaults to <user>@<host>.
+        /// Name shown for this token in the token list. Defaults to `user@host`.
         #[arg(long, value_name = "NAME")]
         device: Option<String>,
     },
@@ -59,6 +61,7 @@ pub enum Command {
 }
 
 #[derive(Debug, Subcommand)]
+/// Project commands: list, add, edit and remove.
 pub enum ProjectCommand {
     /// List projects, sorted by name.
     List,
@@ -97,6 +100,7 @@ pub enum ProjectCommand {
 }
 
 #[derive(Debug, Subcommand)]
+/// Absence kind commands: list, add, edit and remove.
 pub enum AbsenceCommand {
     /// List absence kinds, sorted by name.
     List,
@@ -145,6 +149,7 @@ pub enum EntrySort {
 }
 
 #[derive(Debug, Subcommand)]
+/// Time record commands: list, add, edit and remove.
 pub enum EntryCommand {
     /// List time records of a period, by default the current month, sorted by date.
     ///
@@ -230,6 +235,7 @@ pub struct EntryFields {
 }
 
 #[derive(Debug, Subcommand)]
+/// Commands for the pending start: show it, start it, or clear it.
 pub enum PendingCommand {
     /// Show the pending start.
     Show,
@@ -244,6 +250,7 @@ pub enum PendingCommand {
 }
 
 #[derive(Debug, Subcommand)]
+/// Holiday commands: list, add, edit, remove, and import from a calendar address or file.
 pub enum HolidayCommand {
     /// List holidays of a year, by default this year.
     List {
@@ -285,6 +292,7 @@ pub enum HolidayCommand {
 }
 
 #[derive(Debug, Subcommand)]
+/// Settings commands: show all settings, or set one.
 pub enum SettingsCommand {
     /// Show all settings.
     Show,
@@ -315,6 +323,7 @@ pub enum SettingKey {
 }
 
 #[derive(Debug, Subcommand)]
+/// Token commands: list the tokens of the account, or remove one.
 pub enum TokenCommand {
     /// List the tokens of this account. The secret is never shown again after login.
     List,

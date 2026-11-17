@@ -24,6 +24,7 @@ fn month_bounds(date: NaiveDate) -> (NaiveDate, NaiveDate) {
 }
 
 #[component]
+/// The start page: the calendar and the overview of the selected day, with the time recording below. See the module description.
 pub fn HomePage() -> Element {
     let selected = STATE.read().selected_date;
     // Only changes when the month changes, so moving between days does not reload.

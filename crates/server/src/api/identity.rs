@@ -127,6 +127,7 @@ pub fn hash_token(token: &str) -> String {
 
 /// The user a request acts for. Stored data is keyed by [`user_handle`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// The user a request acts for: the handle under which the account's data is stored.
 pub struct CurrentUser(pub String);
 
 impl FromRequestParts<AppState> for CurrentUser {

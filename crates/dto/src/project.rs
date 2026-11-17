@@ -1,3 +1,5 @@
+//! Projects: the names that time is booked against, with a colour for the calendar and the reports.
+
 use serde::{Deserialize, Serialize};
 
 use crate::{validate_color, validate_name};
@@ -5,24 +7,47 @@ use crate::{validate_color, validate_name};
 /// A project that time can be booked against.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Project {
+    /// Id of the project, assigned by the server.
     pub id: i64,
+    /// Name shown in the calendar and the reports.
     pub name: String,
+    /// Colour as `#rrggbb`.
     pub color: String,
+    /// Archived projects are hidden from the pickers. Their records stay.
     pub archived: bool,
 }
 
 /// Request body for creating or replacing a project.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProjectInput {
+    /// Name of the project to create or replace. Must not be blank.
     pub name: String,
     #[serde(default = "crate::default_color")]
+    /// Colour as `#rrggbb`. Stored in lower case. Defaults to the teal of the calendar.
     pub color: String,
     #[serde(default)]
+    /// Whether the project is archived. Defaults to not archived.
     pub archived: bool,
 }
 
 impl ProjectInput {
     /// Trims the name and lower-cases the colour so stored values are canonical.
+    /// Trims the name and lower-cases the colour so stored values are canonical.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dto::ProjectInput;
+    ///
+    /// let mut input = ProjectInput { name: "  Website ".into(), color: "#0D9488".into(), archived: false };
+    /// input.normalize();
+    /// assert_eq!(input.name, "Website");
+    /// assert_eq!(input.color, "#0d9488");
+    /// assert!(input.validate().is_ok());
+    ///
+    /// input.color = "teal".into();
+    /// assert!(input.validate().is_err());
+    /// ```
     pub fn normalize(&mut self) {
         self.name = self.name.trim().to_string();
         self.color = self.color.trim().to_ascii_lowercase();

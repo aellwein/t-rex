@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+/// The palettes of the well-known themes, mapped onto the tokens the same way as the others.
 mod popular;
 
 /// The setting that follows the browser's colour scheme: Nord Light or Nord Dark.
@@ -38,10 +39,13 @@ pub const TOKENS: &[&str] = &[
 /// A colour theme: its id, its name, whether it is a dark one, and a `#rrggbb` value per token.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ThemeInfo {
+    /// Id of the theme, stored in the settings, for example `nord-dark`.
     pub id: String,
+    /// Name shown in the settings.
     pub name: String,
     /// Dark themes also set the `dark` class, which switches the `dark:` style variants.
     pub dark: bool,
+    /// Colour per palette token, see [`TOKENS`].
     pub colors: BTreeMap<String, String>,
 }
 
@@ -71,11 +75,13 @@ impl ThemeInfo {
     }
 }
 
+/// Whether a value is a `#rrggbb` colour. Hex digits may be upper or lower case.
 fn is_hex_colour(value: &str) -> bool {
     value.len() == 7 && value.starts_with('#') && value[1..].chars().all(|c| c.is_ascii_hexdigit())
 }
 
 /// Maps the names stored before theme ids existed to the ids in use now.
+/// Maps the names `light` and `dark`, used before theme ids existed, to the ids of the Nord themes.
 fn alias(id: &str) -> &str {
     match id {
         "light" | "Light" => "nord-light",
@@ -85,12 +91,30 @@ fn alias(id: &str) -> &str {
 }
 
 /// Whether a setting value is allowed: `system` or the id of a built-in theme.
+/// # Examples
+///
+/// ```
+/// use dto::theme;
+///
+/// assert!(theme::is_known("nord-dark"));
+/// assert!(theme::is_known(theme::SYSTEM));
+/// assert!(!theme::is_known("neon"));
+/// ```
 pub fn is_known(id: &str) -> bool {
     id == SYSTEM || builtin_themes().iter().any(|theme| theme.id == id)
 }
 
 /// The theme to show for a setting value. `system` picks Nord Dark or Nord Light by the browser's
 /// preference. Unknown values fall back to Nord Light.
+/// # Examples
+///
+/// ```
+/// use dto::theme;
+///
+/// assert_eq!(theme::resolve("system", true).id, "nord-dark");
+/// assert_eq!(theme::resolve("system", false).id, "nord-light");
+/// assert_eq!(theme::resolve("no-such", false).id, "nord-light");
+/// ```
 pub fn resolve(id: &str, prefers_dark: bool) -> ThemeInfo {
     let themes = builtin_themes();
     let wanted = match alias(id) {
@@ -106,6 +130,15 @@ pub fn resolve(id: &str, prefers_dark: bool) -> ThemeInfo {
 }
 
 /// Every built-in theme, in the order the settings list them.
+/// # Examples
+///
+/// ```
+/// use dto::theme;
+///
+/// let themes = theme::builtin_themes();
+/// assert_eq!(themes[0].id, "nord-light");
+/// assert!(themes.iter().all(|theme| theme.validate().is_ok()));
+/// ```
 pub fn builtin_themes() -> Vec<ThemeInfo> {
     let mut themes = vec![nord_light(), nord_dark()];
     themes.extend(CATPPUCCIN.iter().map(catppuccin));
@@ -113,6 +146,7 @@ pub fn builtin_themes() -> Vec<ThemeInfo> {
     themes
 }
 
+/// Builds a built-in theme from pairs of a token and a colour, both as string literals.
 fn theme(id: &str, name: &str, dark: bool, pairs: &[(&str, &str)]) -> ThemeInfo {
     let owned: Vec<(&str, String)> = pairs
         .iter()
@@ -121,6 +155,7 @@ fn theme(id: &str, name: &str, dark: bool, pairs: &[(&str, &str)]) -> ThemeInfo 
     theme_from_pairs(id, name, dark, &owned)
 }
 
+/// Builds a theme from pairs of a token and a colour, with owned colour values.
 fn theme_from_pairs(id: &str, name: &str, dark: bool, pairs: &[(&str, String)]) -> ThemeInfo {
     ThemeInfo {
         id: id.into(),
@@ -134,7 +169,7 @@ fn theme_from_pairs(id: &str, name: &str, dark: bool, pairs: &[(&str, String)]) 
 }
 
 /// Nord, light flavour: the colours the app used before themes could be chosen.
-/// Palette: https://www.nordtheme.com/docs/colors-and-palettes/
+/// Palette: <https://www.nordtheme.com/docs/colors-and-palettes/>
 fn nord_light() -> ThemeInfo {
     theme(
         "nord-light",
@@ -199,7 +234,7 @@ fn nord_dark() -> ThemeInfo {
 }
 
 /// The colours of one Catppuccin flavour, from the official palette
-/// (https://github.com/catppuccin/rust, palette.json, version 2.8.0).
+/// (<https://github.com/catppuccin/rust>, palette.json, version 2.8.0).
 struct Flavor {
     id: &'static str,
     name: &'static str,
@@ -222,6 +257,7 @@ struct Flavor {
     maroon: &'static str,
 }
 
+/// The four Catppuccin flavours, in the order the settings list them: Latte, Frappé, Macchiato and Mocha.
 const CATPPUCCIN: [Flavor; 4] = [
     Flavor {
         id: "catppuccin-latte",

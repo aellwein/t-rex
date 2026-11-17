@@ -96,3 +96,23 @@ The `Release` workflow (`.github/workflows/release.yml`) then:
 The workflow needs these repository secrets: `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE`. The registry is written with the built-in `GITHUB_TOKEN`. The first release creates the packages; set them to public in the package settings if others should pull them without signing in.
 
 A tag that is not SemVer fails the workflow before anything is built.
+
+## Documentation
+
+Every public item and every module has a doc comment. Modules start with `//!`, items with `///`. Write what an item is for and what it guarantees, and say when it fails or panics. Link related items with intra-doc links in rustdoc, such as [`TimeEntry`].
+
+Examples belong in the doc comments of the `dto` crate. They are doctests, so `cargo test` runs them and fails when they drift from the code:
+
+```sh
+cargo test -p dto --doc
+```
+
+The `server`, `cli` and `webapp` crates are binaries, which do not run doctests. Their behaviour is described in the Markdown docs in this folder, with examples that match the tests.
+
+To build the API documentation and treat broken links and missing docs as errors:
+
+```sh
+RUSTDOCFLAGS="-D warnings" cargo doc -p dto --no-deps --open
+```
+
+To include private items, for working on the code, add `--document-private-items`.

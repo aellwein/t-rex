@@ -1,15 +1,26 @@
 //! REST API under `/api/v1`. Every handler acts for the current user only.
 
+/// Absence kinds: list, create, edit and delete.
 pub mod absences;
+/// Browser login for the command line client, and the exchange of its one-time code for a token.
 pub mod cli;
+/// Time records: list, create, edit and delete, with the checks of the day.
 pub mod entries;
+/// The errors of the API and how they map to status codes.
 pub mod error;
+/// Holidays: list, create, edit, delete and import from calendar files.
 pub mod holidays;
+/// Who a request acts for: a browser session or a command line token.
 pub mod identity;
+/// The signed-in account, as the app header shows it.
 pub mod me;
+/// The pending start of the day.
 pub mod pending;
+/// Projects: list, create, edit and delete.
 pub mod projects;
+/// Settings: read and save.
 pub mod settings;
+/// API tokens: list, create and revoke.
 pub mod tokens;
 
 #[cfg(test)]

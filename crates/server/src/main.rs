@@ -1,3 +1,9 @@
+//! Entry point of the server. It reads the configuration, connects to the database, runs the migrations and
+//! serves the REST API and the web app on port 8080.
+//!
+//! The OIDC settings `ISSUER`, `CLIENT_ID`, `CLIENT_SECRET` and `COOKIE_SECRET` are required. See
+//! `docs/configuration.md` for all environment variables.
+
 #![forbid(unsafe_code)]
 use std::{env, sync::Arc};
 
@@ -17,13 +23,20 @@ use tokio::net::TcpListener;
 #[cfg(feature = "embed")]
 use embed::static_handler;
 
+/// The REST API, the sign-in routes and the checks of who a request acts for.
 mod api;
+/// Settings read from the environment: the database and the server options.
 mod config;
+/// Connecting to SQLite or Postgres, and running the migrations.
 mod db;
 #[cfg(feature = "embed")]
+/// The web app, built into the binary. Only with the `embed` feature.
 mod embed;
+/// The database tables as SeaORM models.
 mod entity;
+/// Schema migrations. They run on every start.
 mod migration;
+/// The queries against the database, one module per table.
 mod store;
 
 /// How long a browser sign-in lasts without activity, in minutes. The session cookie and the

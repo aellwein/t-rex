@@ -26,6 +26,7 @@ fn is_expired(expires_at: &str) -> bool {
 }
 
 #[component]
+/// The tokens page. See the module description.
 pub fn TokensPage() -> Element {
     let mut tokens = use_resource(|| async { api::list_tokens().await });
     let mut failure = use_signal(|| None::<String>);

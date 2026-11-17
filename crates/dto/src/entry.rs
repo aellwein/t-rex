@@ -1,3 +1,22 @@
+//! Time records: the booked time of one day, the rules that turn start, end, duration and break into
+//! a record, and the formats the API and the clients use for times.
+//!
+//! # Times
+//!
+//! A day is counted in minutes after midnight. `start_minute` is `0..1440`. A record occupies
+//! `start_minute` for `minutes + break_minutes`, so its end is `start_minute + minutes + break_minutes`
+//! and must not pass midnight. Clock times are written `HH:MM` on the wire and in the clients.
+//!
+//! # Examples
+//!
+//! ```
+//! use dto::{parse_clock, format_clock};
+//!
+//! let start = parse_clock("09:30").unwrap();
+//! assert_eq!(start, 9 * 60 + 30);
+//! assert_eq!(format_clock(start), "09:30");
+//! ```
+
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
@@ -11,15 +30,21 @@ use crate::{MAX_NOTE_LEN, MINUTES_PER_DAY};
 /// never overlap.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeEntry {
+    /// Id of the record, assigned by the server.
     pub id: i64,
+    /// Day of the record.
     pub date: NaiveDate,
     /// Minutes after midnight. `None` for entries recorded before start times existed.
     pub start_minute: Option<u32>,
+    /// Booked work time in minutes. The break is not included.
     pub minutes: u32,
     /// Unpaid break taken within the record.
     pub break_minutes: u32,
+    /// Project the work belongs to. Exactly one of this and `absence_kind_id` is set.
     pub project_id: Option<i64>,
+    /// Absence kind of the record, instead of a project.
     pub absence_kind_id: Option<i64>,
+    /// Free text, at most [`MAX_NOTE_LEN`] characters. Empty when there is no note.
     pub note: String,
 }
 
@@ -28,6 +53,7 @@ pub struct TimeEntry {
 /// Exactly one of `project_id` and `absence_kind_id` must be set.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeEntryInput {
+    /// Day of the record.
     pub date: NaiveDate,
     /// Minutes after midnight, `0..1440`.
     pub start_minute: u32,
@@ -37,10 +63,13 @@ pub struct TimeEntryInput {
     #[serde(default)]
     pub break_minutes: u32,
     #[serde(default)]
+    /// Project to book on. Use this or `absence_kind_id`, not both.
     pub project_id: Option<i64>,
     #[serde(default)]
+    /// Absence kind to book instead of a project.
     pub absence_kind_id: Option<i64>,
     #[serde(default)]
+    /// Free text, trimmed. Optional.
     pub note: String,
 }
 
@@ -51,6 +80,23 @@ impl TimeEntryInput {
     }
 
     /// Minutes after midnight at which the record ends (exclusive), break included.
+    /// # Examples
+    ///
+    /// ```
+    /// use chrono::NaiveDate;
+    /// use dto::TimeEntryInput;
+    ///
+    /// let input = TimeEntryInput {
+    ///     date: NaiveDate::from_ymd_opt(2026, 11, 2).unwrap(),
+    ///     start_minute: 9 * 60,
+    ///     minutes: 7 * 60 + 30,
+    ///     break_minutes: 45,
+    ///     project_id: Some(1),
+    ///     absence_kind_id: None,
+    ///     note: String::new(),
+    /// };
+    /// assert_eq!(input.end_minute(), 17 * 60 + 15);
+    /// ```
     pub fn end_minute(&self) -> u32 {
         self.start_minute
             .saturating_add(self.minutes)
@@ -58,6 +104,30 @@ impl TimeEntryInput {
     }
 
     /// Checks the input without touching the database.
+    /// Checks the input without the database: a positive work time, a start and an end on the same day, and
+    /// exactly one of a project or an absence.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use chrono::NaiveDate;
+    /// use dto::TimeEntryInput;
+    ///
+    /// let mut input = TimeEntryInput {
+    ///     date: NaiveDate::from_ymd_opt(2026, 11, 2).unwrap(),
+    ///     start_minute: 9 * 60,
+    ///     minutes: 7 * 60 + 30,
+    ///     break_minutes: 45,
+    ///     project_id: Some(1),
+    ///     absence_kind_id: None,
+    ///     note: String::new(),
+    /// };
+    /// assert!(input.validate().is_ok());
+    ///
+    /// // A record with both a project and an absence is refused.
+    /// input.absence_kind_id = Some(2);
+    /// assert!(input.validate().is_err());
+    /// ```
     pub fn validate(&self) -> Result<(), String> {
         if self.minutes == 0 {
             return Err("minutes must be at least 1".into());
@@ -87,11 +157,23 @@ impl TimeEntryInput {
 /// Query parameters for listing entries. Both bounds are inclusive.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EntryQuery {
+    /// First day, inclusive. Without it the list has no lower bound.
     pub from: Option<NaiveDate>,
+    /// Last day, inclusive. Without it the list has no upper bound.
     pub to: Option<NaiveDate>,
 }
 
 /// Parses a clock time `HH:MM` (24-hour) into minutes after midnight.
+/// # Examples
+///
+/// ```
+/// use dto::parse_clock;
+///
+/// assert_eq!(parse_clock("09:30"), Some(570));
+/// assert_eq!(parse_clock("23:59"), Some(1439));
+/// assert_eq!(parse_clock("24:00"), None);
+/// assert_eq!(parse_clock("9:30"), None);
+/// ```
 pub fn parse_clock(value: &str) -> Option<u32> {
     let (hours, minutes) = value.trim().split_once(':')?;
     if hours.len() != 2 || minutes.len() != 2 {
@@ -106,6 +188,14 @@ pub fn parse_clock(value: &str) -> Option<u32> {
 }
 
 /// Formats minutes after midnight as `HH:MM`. The end of the day is `24:00`.
+/// # Examples
+///
+/// ```
+/// use dto::format_clock;
+///
+/// assert_eq!(format_clock(570), "09:30");
+/// assert_eq!(format_clock(1440), "24:00");
+/// ```
 pub fn format_clock(minutes: u32) -> String {
     format!("{:02}:{:02}", minutes / 60, minutes % 60)
 }
@@ -113,13 +203,24 @@ pub fn format_clock(minutes: u32) -> String {
 /// Unit of a typed duration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DurationUnit {
+    /// The amount is in minutes, for example `450`.
     Minutes,
+    /// The amount is in hours, decimals allowed, for example `7.5`.
     Hours,
 }
 
 /// Converts a typed duration to whole minutes, rounding to the nearest minute.
 ///
 /// Returns `None` if the text is not a non-negative number. Zero is returned as `Some(0)`.
+/// # Examples
+///
+/// ```
+/// use dto::{duration_minutes, DurationUnit};
+///
+/// assert_eq!(duration_minutes("1,5", DurationUnit::Hours), Some(90));
+/// assert_eq!(duration_minutes("450", DurationUnit::Minutes), Some(450));
+/// assert_eq!(duration_minutes("-1", DurationUnit::Hours), None);
+/// ```
 pub fn duration_minutes(amount: &str, unit: DurationUnit) -> Option<u32> {
     let value: f64 = amount.trim().replace(',', ".").parse().ok()?;
     if !value.is_finite() || value < 0.0 {
@@ -137,6 +238,17 @@ pub fn duration_minutes(amount: &str, unit: DurationUnit) -> Option<u32> {
 }
 
 /// Shows whole minutes in the given unit, e.g. 90 minutes as `1.5` hours.
+/// Hours are shown as a decimal number, rounded to two places. The clients show `hh:mm` themselves,
+/// see the command line client; this function serves the web app's inputs.
+///
+/// # Examples
+///
+/// ```
+/// use dto::{duration_text, DurationUnit};
+///
+/// assert_eq!(duration_text(90, DurationUnit::Hours), "1.5");
+/// assert_eq!(duration_text(90, DurationUnit::Minutes), "90");
+/// ```
 pub fn duration_text(minutes: u32, unit: DurationUnit) -> String {
     match unit {
         DurationUnit::Minutes => minutes.to_string(),
@@ -150,14 +262,24 @@ pub fn duration_text(minutes: u32, unit: DurationUnit) -> String {
 /// A time record ready to be saved.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TimeBlock {
+    /// Minutes after midnight at which the block starts.
     pub start_minute: u32,
     /// Booked work time.
     pub minutes: u32,
+    /// Unpaid break within the block, in minutes.
     pub break_minutes: u32,
 }
 
 impl TimeBlock {
     /// Minutes after midnight at which the record ends (exclusive), break included.
+    /// # Examples
+    ///
+    /// ```
+    /// use dto::TimeBlock;
+    ///
+    /// let block = TimeBlock { start_minute: 540, minutes: 450, break_minutes: 45 };
+    /// assert_eq!(block.end_minute(), 1035);
+    /// ```
     pub fn end_minute(self) -> u32 {
         self.start_minute + self.minutes + self.break_minutes
     }
@@ -166,20 +288,42 @@ impl TimeBlock {
 /// Why the time fields of a record do not form a valid record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockError {
+    /// No start time was given.
     StartMissing,
+    /// The start is not a clock time `HH:MM`.
     StartInvalid,
+    /// The end is not a clock time `HH:MM`.
     EndInvalid,
+    /// Neither a duration nor an end time was given.
     DurationMissing,
+    /// The duration is not a positive number, or it does not fit between start and end.
     DurationInvalid,
+    /// The end is not after the start.
     EndNotAfterStart,
+    /// Start, end, duration and break do not agree.
     DurationMismatch,
+    /// The break is longer than the time between start and end.
     BreakTooLong,
+    /// The record would end after midnight.
     PastMidnight,
 }
 
 /// Works out the record from the time fields. Start, end and duration are related by
 /// `end = start + duration + break`: any two of start, end and duration are enough, and if
 /// all three are given they must agree.
+/// # Examples
+///
+/// ```
+/// use dto::{resolve_block, DurationUnit};
+///
+/// // Start and end given: the work time is the span minus the break.
+/// let block = resolve_block("09:00", "17:30", "", DurationUnit::Hours, 45).unwrap();
+/// assert_eq!(block.minutes, 465);
+///
+/// // Start and duration given: the end follows.
+/// let block = resolve_block("09:00", "", "7.5", DurationUnit::Hours, 45).unwrap();
+/// assert_eq!(block.end_minute(), 17 * 60 + 15);
+/// ```
 pub fn resolve_block(
     start: &str,
     end: &str,
@@ -245,6 +389,15 @@ pub fn resolve_block(
 }
 
 /// The end time that follows from a start, a duration and a break, if it stays on the day.
+/// # Examples
+///
+/// ```
+/// use dto::{derive_end, DurationUnit};
+///
+/// assert_eq!(derive_end("09:00", "7.5", DurationUnit::Hours, 45).as_deref(), Some("17:15"));
+/// // Past midnight: no end on this day.
+/// assert_eq!(derive_end("23:00", "2", DurationUnit::Hours, 0), None);
+/// ```
 pub fn derive_end(
     start: &str,
     amount: &str,
@@ -261,6 +414,14 @@ pub fn derive_end(
 
 /// The work duration that follows from a start, an end and a break, if the end is after the
 /// start and the break fits in between.
+/// # Examples
+///
+/// ```
+/// use dto::{derive_amount, DurationUnit};
+///
+/// assert_eq!(derive_amount("08:00", "16:45", DurationUnit::Hours, 45).as_deref(), Some("8"));
+/// assert_eq!(derive_amount("10:00", "09:00", DurationUnit::Hours, 0), None);
+/// ```
 pub fn derive_amount(
     start: &str,
     end: &str,
@@ -276,6 +437,21 @@ pub fn derive_amount(
 
 /// Whether `block` shares any minute with a record of the same day, breaks included. Records
 /// without a start time never conflict.
+/// # Examples
+///
+/// ```
+/// use chrono::NaiveDate;
+/// use dto::{overlaps_any, TimeBlock, TimeEntry};
+///
+/// let date = NaiveDate::from_ymd_opt(2026, 11, 2).unwrap();
+/// let booked = TimeEntry { id: 1, date, start_minute: Some(540), minutes: 480, break_minutes: 45,
+///     project_id: Some(1), absence_kind_id: None, note: String::new() };
+/// // 09:00 to 17:15 with the break is taken; 16:00 to 17:00 falls inside it.
+/// let inside = TimeBlock { start_minute: 16 * 60, minutes: 60, break_minutes: 0 };
+/// assert!(overlaps_any(inside, &[booked.clone()]));
+/// let after = TimeBlock { start_minute: 18 * 60, minutes: 60, break_minutes: 0 };
+/// assert!(!overlaps_any(after, &[booked]));
+/// ```
 pub fn overlaps_any(block: TimeBlock, entries: &[TimeEntry]) -> bool {
     entries.iter().any(|entry| {
         entry.start_minute.is_some_and(|start| {

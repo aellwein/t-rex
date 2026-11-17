@@ -12,6 +12,7 @@ use sea_orm::{
 use crate::entity::time_entry::{ActiveModel, Column, Entity as Entries, Model};
 use crate::store::{Window, fetch_window, page};
 
+/// Converts a stored row into the DTO. Fails if a stored number does not fit its type.
 fn from_model(model: Model) -> Result<TimeEntry> {
     Ok(TimeEntry {
         id: model.id,
@@ -56,6 +57,7 @@ pub async fn get(conn: &DatabaseConnection, user: &str, id: i64) -> Result<Optio
     model.map(from_model).transpose()
 }
 
+/// Builds the row of a time record from its input, with the owner set.
 fn active_from_input(user: &str, input: &TimeEntryInput) -> ActiveModel {
     ActiveModel {
         user_id: Set(user.to_string()),
@@ -70,6 +72,7 @@ fn active_from_input(user: &str, input: &TimeEntryInput) -> ActiveModel {
     }
 }
 
+/// Inserts a time record for the user and returns it with its id.
 pub async fn create(
     conn: &DatabaseConnection,
     user: &str,

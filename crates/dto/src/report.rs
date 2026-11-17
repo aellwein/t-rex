@@ -20,11 +20,37 @@ where
 }
 
 /// Whether a day has working time: Monday to Friday, and not a public holiday.
+/// # Examples
+///
+/// ```
+/// use std::collections::BTreeSet;
+/// use chrono::NaiveDate;
+/// use dto::is_working_day;
+///
+/// let monday = NaiveDate::from_ymd_opt(2026, 11, 2).unwrap();
+/// let saturday = NaiveDate::from_ymd_opt(2026, 11, 7).unwrap();
+/// let holidays: BTreeSet<NaiveDate> = [monday].into_iter().collect();
+/// assert!(!is_working_day(monday, &holidays));
+/// assert!(!is_working_day(saturday, &holidays));
+/// ```
 pub fn is_working_day(day: NaiveDate, holidays: &BTreeSet<NaiveDate>) -> bool {
     day.weekday().num_days_from_monday() < 5 && !holidays.contains(&day)
 }
 
 /// Working days between `from` and `to`, both included: Monday to Friday without the holidays.
+/// # Examples
+///
+/// ```
+/// use std::collections::BTreeSet;
+/// use chrono::NaiveDate;
+/// use dto::weekdays_between;
+///
+/// let monday = NaiveDate::from_ymd_opt(2026, 11, 2).unwrap();
+/// let sunday = NaiveDate::from_ymd_opt(2026, 11, 8).unwrap();
+/// assert_eq!(weekdays_between(monday, sunday, &BTreeSet::new()), 5);
+/// let holidays: BTreeSet<NaiveDate> = [monday].into_iter().collect();
+/// assert_eq!(weekdays_between(monday, sunday, &holidays), 4);
+/// ```
 pub fn weekdays_between(from: NaiveDate, to: NaiveDate, holidays: &BTreeSet<NaiveDate>) -> u32 {
     from.iter_days()
         .take_while(|day| *day <= to)
@@ -55,13 +81,27 @@ pub fn actual_minutes(
 /// Target and actual of one month, in minutes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MonthBalance {
+    /// Year of the month.
     pub year: i32,
+    /// Month, `1` to `12`.
     pub month: u32,
+    /// Target of the month in minutes: working days times the daily working time.
     pub target: u32,
+    /// Actual time of the month in minutes: project work plus paid absence.
     pub actual: u32,
 }
 
 /// Running overtime after each month: the carry-over plus the sum of (actual − target) so far.
+/// # Examples
+///
+/// ```
+/// use dto::{running_overtime, MonthBalance};
+///
+/// let october = MonthBalance { year: 2026, month: 10, target: 40 * 60, actual: 45 * 60 };
+/// let november = MonthBalance { year: 2026, month: 11, target: 40 * 60, actual: 38 * 60 };
+/// // Carry-over of one hour, then five hours more, then two hours less.
+/// assert_eq!(running_overtime(60, &[october, november]), vec![360, 240]);
+/// ```
 pub fn running_overtime(carry_over: i32, months: &[MonthBalance]) -> Vec<i32> {
     let mut running = carry_over;
     months
@@ -76,9 +116,13 @@ pub fn running_overtime(carry_over: i32, months: &[MonthBalance]) -> Vec<i32> {
 /// One day of the running overtime: target, actual, and the running overtime after the day.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DayBalance {
+    /// The day.
     pub date: NaiveDate,
+    /// Target of the day in minutes. Zero on weekends and holidays.
     pub target: u32,
+    /// Actual time of the day in minutes.
     pub actual: u32,
+    /// Running overtime after the day, in minutes. Negative if behind.
     pub running: i32,
 }
 

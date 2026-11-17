@@ -1,3 +1,6 @@
+//! The month calendar of the start page. Each day of the shown month can be selected; days with records get a
+//! dot, and holidays a red marker with their name.
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use chrono::{Datelike, NaiveDate, Weekday};
@@ -7,9 +10,12 @@ use dto::calendar::{add_months, clamped_date};
 
 use crate::STATE;
 
+/// The first year the calendar can be moved to.
 const MIN_YEAR: i32 = 1970;
+/// The last year the calendar can be moved to.
 const MAX_YEAR: i32 = 2100;
 
+/// The name of a month, `1` for January to `12` for December, in the current language.
 pub fn month_name(month: u32) -> String {
     match month {
         1 => t!("January"),

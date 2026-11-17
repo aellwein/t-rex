@@ -35,6 +35,7 @@ pub fn format_hours(minutes: u32) -> String {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+/// What the settings page shows after a save: success, or the reason it failed.
 enum Notice {
     Saved,
     InvalidHours,
@@ -43,6 +44,7 @@ enum Notice {
 }
 
 #[component]
+/// The settings page. See the module description.
 pub fn SettingsPage() -> Element {
     let saved = use_resource(|| async { api::get_settings().await });
     let mut theme = use_signal(|| dto::theme::SYSTEM.to_string());

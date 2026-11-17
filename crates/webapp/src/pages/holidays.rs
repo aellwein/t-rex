@@ -14,6 +14,7 @@ use crate::components::ui::{
 use crate::STATE;
 
 #[component]
+/// The holidays page. See the module description.
 pub fn HolidaysPage() -> Element {
     let mut holidays = use_resource(|| async { api::list_holidays().await });
     let mut year = use_signal(|| STATE.read().selected_date.year());

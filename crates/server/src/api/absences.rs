@@ -1,3 +1,5 @@
+//! Absence kinds: list, create, edit and delete. A kind that time records use cannot be deleted.
+
 use axum::{
     Json,
     extract::{Path, Query, State},
@@ -8,6 +10,7 @@ use dto::{AbsenceKind, AbsenceKindInput, Page, PageQuery};
 use super::{ApiError, ApiResult, AppState, CurrentUser};
 use crate::store::absences as store;
 
+/// Lists the absence kinds of the signed-in user, one page at a time. See [`PageQuery`] for the paging parameters.
 pub async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -17,6 +20,7 @@ pub async fn list(
     Ok(Json(store::list(&state.conn, &user, window).await?))
 }
 
+/// Creates an absence kind with a name, a colour and whether it is paid. The input is trimmed and checked first. Answers `201 Created` with the new absence kind.
 pub async fn create(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -28,6 +32,7 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(kind)))
 }
 
+/// Returns one absence kind of the user, or `404 Not Found`.
 pub async fn get_one(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -39,6 +44,7 @@ pub async fn get_one(
         .ok_or(ApiError::NotFound)
 }
 
+/// Replaces an absence kind with the given state. Answers `404` if the kind is not the user's and `409` if the new name is already taken.
 pub async fn update(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -53,6 +59,7 @@ pub async fn update(
         .ok_or(ApiError::NotFound)
 }
 
+/// Deletes an absence kind. Answers `204 No Content`. A kind that time records use cannot be deleted; the answer is `409 Conflict`, so archive it instead.
 pub async fn delete(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,

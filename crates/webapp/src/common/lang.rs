@@ -1,7 +1,10 @@
+//! The languages of the app and the language codes they correspond to.
+
 use serde::{Deserialize, Serialize};
 use unic_langid::{langid, LanguageIdentifier};
 
 #[derive(Clone, Copy, PartialEq, Serialize, Deserialize, Debug)]
+/// The languages of the app. Each one has a translation file in `i18n/`.
 pub enum Language {
     English,
     German,

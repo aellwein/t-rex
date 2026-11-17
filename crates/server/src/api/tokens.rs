@@ -11,8 +11,10 @@ use super::{ApiError, ApiResult, AppState, CurrentAccount, SessionAccount};
 use crate::store::api_tokens;
 
 /// Longest accepted name for a token, in characters.
+/// Longest accepted name for a token, in characters.
 const MAX_TOKEN_NAME: usize = 100;
 
+/// Lists the tokens of the account, one page at a time, without their secret values. Works with a browser session and with a token.
 pub async fn list(
     State(state): State<AppState>,
     CurrentAccount(account): CurrentAccount,
@@ -40,6 +42,7 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(created)))
 }
 
+/// Revokes a token of the account. Answers `204 No Content`, or `404` if the token is not the account's.
 pub async fn delete(
     State(state): State<AppState>,
     CurrentAccount(account): CurrentAccount,
@@ -105,6 +108,7 @@ pub async fn issue(
     })
 }
 
+/// Encodes bytes as URL-safe base64 without padding. This is the form of tokens and login codes.
 fn base64_url(bytes: &[u8]) -> String {
     use base64::Engine;
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)

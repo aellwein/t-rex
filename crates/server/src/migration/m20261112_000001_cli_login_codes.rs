@@ -4,6 +4,7 @@ use sea_orm_migration::prelude::*;
 use sea_orm_migration::sea_orm::DatabaseBackend;
 
 #[derive(DeriveMigrationName)]
+/// Adds the `cli_login_codes` table for the one-time codes of the command line login.
 pub struct Migration;
 
 const SQLITE_UP: &str =

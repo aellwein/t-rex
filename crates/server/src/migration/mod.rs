@@ -8,10 +8,12 @@ mod m20261113_000001_token_expiry;
 
 use sea_orm_migration::prelude::*;
 
+/// The list of migrations, in the order they run. Each runs once per database.
 pub struct Migrator;
 
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {
+    /// The migrations in the order they run.
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
         vec![
             Box::new(m20261110_000001_initial::Migration),
