@@ -42,6 +42,8 @@ pub fn run(cli: Cli) -> Result<()> {
     }
 }
 
+/// Runs a command that needs a server connection. `login` and `logout` are handled before this, because they
+/// work without a saved token.
 fn dispatch(client: &Client, command: Command) -> Result<()> {
     match command {
         Command::Whoami => whoami(client),
@@ -60,6 +62,7 @@ fn dispatch(client: &Client, command: Command) -> Result<()> {
 
 // ---- account -------------------------------------------------------------------------------
 
+/// Signs in through the browser and saves the token. See [`crate::login`] for the steps.
 fn sign_in(server: Option<String>, device: Option<String>) -> Result<()> {
     let server = server.context("no server address: pass --server <URL> once, for example `t-rex login --server https://t-rex.example.com`")?;
     let device = device.unwrap_or_else(default_device);
@@ -77,6 +80,7 @@ fn sign_in(server: Option<String>, device: Option<String>) -> Result<()> {
     Ok(())
 }
 
+/// Revokes the token on the server, if it is still known there, and forgets it locally. A failed revoke is a warning, not an error.
 fn sign_out(saved: Config) -> Result<()> {
     if let (Some(server), Some(token), Some(id)) = (&saved.server, &saved.token, saved.token_id) {
         let client = Client::new(server, Some(token.clone()))?;
@@ -99,6 +103,7 @@ fn default_device() -> String {
     device_name(user, host_name())
 }
 
+/// The name of this computer's token: `user@host`, with the parts that are known.
 fn device_name(user: Option<String>, host: Option<String>) -> String {
     let user = user.map(|u| u.trim().to_string()).filter(|u| !u.is_empty());
     let host = host.map(|h| h.trim().to_string()).filter(|h| !h.is_empty());
@@ -136,6 +141,7 @@ mod device_tests {
     }
 }
 
+/// Prints the signed-in account and the server version.
 fn whoami(client: &Client) -> Result<()> {
     let me: dto::Me = client.get("/api/v1/me")?;
     let version: dto::VersionInfo = client.get("/api/v1/version")?;
@@ -150,6 +156,7 @@ fn whoami(client: &Client) -> Result<()> {
 
 // ---- projects and absence kinds ------------------------------------------------------------
 
+/// Runs a project command. Projects are referred to by id or by name.
 fn project(client: &Client, command: ProjectCommand) -> Result<()> {
     match command {
         ProjectCommand::List => {
@@ -213,6 +220,7 @@ fn project(client: &Client, command: ProjectCommand) -> Result<()> {
     Ok(())
 }
 
+/// Runs an absence kind command. Kinds are referred to by id or by name.
 fn absence(client: &Client, command: AbsenceCommand) -> Result<()> {
     match command {
         AbsenceCommand::List => {
@@ -277,6 +285,7 @@ fn absence(client: &Client, command: AbsenceCommand) -> Result<()> {
     Ok(())
 }
 
+/// The word shown in project and absence lists for the archived flag.
 fn status(archived: bool) -> String {
     if archived { "archived" } else { "active" }.into()
 }
@@ -312,6 +321,7 @@ fn local_time(text: &str) -> String {
         .unwrap_or_else(|_| text.to_string())
 }
 
+/// A number that matches an id wins. Otherwise the name is matched in any case; an ambiguous or unknown name is an error.
 fn find_id<'a>(
     reference: &str,
     items: impl Iterator<Item = (i64, &'a str)>,
@@ -338,6 +348,7 @@ fn find_id<'a>(
 
 // ---- time records --------------------------------------------------------------------------
 
+/// Runs a time record command.
 fn entry(client: &Client, command: EntryCommand) -> Result<()> {
     match command {
         EntryCommand::List {
@@ -437,6 +448,7 @@ fn page_bounds(total: usize, page: Option<(usize, usize)>) -> (usize, usize) {
     }
 }
 
+/// Fetches the records of the period, sorts them, cuts the page and prints them. Records are fetched page by page from the server, so the whole period is always sorted correctly before it is cut.
 fn list_entries(client: &Client, options: ListOptions) -> Result<()> {
     // Check the format before the server is asked for anything.
     let json = options.format.as_deref() == Some("json");
@@ -502,6 +514,7 @@ fn list_entries(client: &Client, options: ListOptions) -> Result<()> {
     Ok(())
 }
 
+/// Adds a time record. The start defaults to the pending start of the day, if there is one.
 fn add_entry(client: &Client, fields: EntryFields) -> Result<()> {
     let date = match &fields.date {
         Some(text) => parse_date(text)?,
@@ -527,6 +540,7 @@ fn add_entry(client: &Client, fields: EntryFields) -> Result<()> {
     Ok(())
 }
 
+/// Changes a time record. Only the fields that are given change; the rest keep the saved values.
 fn edit_entry(client: &Client, id: i64, fields: EntryFields) -> Result<()> {
     let existing: TimeEntry = client.get(&format!("/api/v1/time-entries/{id}"))?;
     let date = match &fields.date {
@@ -628,6 +642,7 @@ fn parse_break(text: &str) -> Result<u32> {
     }
 }
 
+/// The message for a time record that cannot be built, in the words of the command line.
 fn block_error(err: BlockError) -> anyhow::Error {
     anyhow!(match err {
         BlockError::StartMissing => "give --start",
@@ -644,6 +659,7 @@ fn block_error(err: BlockError) -> anyhow::Error {
 
 // ---- pending start -------------------------------------------------------------------------
 
+/// Runs a pending start command: show, start or clear.
 fn pending(client: &Client, command: PendingCommand) -> Result<()> {
     match command {
         PendingCommand::Show => {
@@ -681,7 +697,9 @@ fn pending(client: &Client, command: PendingCommand) -> Result<()> {
     Ok(())
 }
 
+/// A time of day as minutes after midnight, so that clock times and durations use the same format.
 trait HourMinute {
+    /// Minutes after midnight of this time, in local time.
     fn hour_minute(&self) -> u32;
 }
 
@@ -694,6 +712,7 @@ impl HourMinute for chrono::DateTime<Local> {
 
 // ---- holidays ------------------------------------------------------------------------------
 
+/// Runs a holiday command.
 fn holiday(client: &Client, command: HolidayCommand) -> Result<()> {
     match command {
         HolidayCommand::List { year } => {
@@ -759,6 +778,7 @@ fn holiday(client: &Client, command: HolidayCommand) -> Result<()> {
     Ok(())
 }
 
+/// Prints how many holidays an import added and how many days already had one.
 fn print_import(result: HolidayImportResult) {
     println!(
         "Added {} holiday(s). {} day(s) already had one and were kept.",
@@ -768,6 +788,7 @@ fn print_import(result: HolidayImportResult) {
 
 // ---- settings and tokens -------------------------------------------------------------------
 
+/// Shows the settings, or saves one setting after checking it locally.
 fn settings(client: &Client, command: SettingsCommand) -> Result<()> {
     match command {
         SettingsCommand::Show => {
@@ -792,6 +813,7 @@ fn settings(client: &Client, command: SettingsCommand) -> Result<()> {
     Ok(())
 }
 
+/// Parses `value` for the given setting and writes it into `s`. Errors describe the expected form.
 fn apply_setting(s: &mut Settings, key: SettingKey, value: &str) -> Result<()> {
     match key {
         SettingKey::DailyHours => {
@@ -832,6 +854,7 @@ fn apply_setting(s: &mut Settings, key: SettingKey, value: &str) -> Result<()> {
     Ok(())
 }
 
+/// The value of one setting as the client shows it.
 fn value_of(s: &Settings, key: SettingKey) -> String {
     match key {
         SettingKey::DailyHours => format_clock(s.daily_minutes),
@@ -843,6 +866,7 @@ fn value_of(s: &Settings, key: SettingKey) -> String {
     }
 }
 
+/// The language codes the settings accept, separated by commas, for the help text.
 fn language_codes() -> String {
     [
         Language::System,
@@ -864,6 +888,7 @@ fn language_codes() -> String {
     .join(", ")
 }
 
+/// Runs a token command. Listing shows id, name, creation and expiry; the secret is never shown again.
 fn token(client: &Client, command: TokenCommand) -> Result<()> {
     match command {
         TokenCommand::List => {
@@ -899,11 +924,13 @@ fn token(client: &Client, command: TokenCommand) -> Result<()> {
 
 // ---- date helpers --------------------------------------------------------------------------
 
+/// Parses a `YYYY-MM-DD` date, with an error that shows the expected form.
 fn parse_date(text: &str) -> Result<NaiveDate> {
     NaiveDate::parse_from_str(text.trim(), "%Y-%m-%d")
         .with_context(|| format!("\"{text}\" is not a date; use YYYY-MM-DD"))
 }
 
+/// The last day of the month that `day` is in.
 fn last_day_of_month(day: NaiveDate) -> NaiveDate {
     let (year, month) = if day.month() == 12 {
         (day.year() + 1, 1)

@@ -4,6 +4,7 @@ use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "time_entries")]
+/// A row of `time_entries`: One time record of one user.
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i64,
@@ -18,6 +19,7 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// No SeaORM relations are declared here. The store matches the ids itself.
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}

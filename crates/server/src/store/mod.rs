@@ -1,12 +1,20 @@
 //! Persistence layer: SeaORM queries for each entity. Every query is scoped by user id.
 
+/// Queries for absence kinds.
 pub mod absences;
+/// Queries for API tokens: creation within the per-account limit, lookup by hash, listing and revoking.
 pub mod api_tokens;
+/// Queries for the one-time codes of the command line login.
 pub mod cli_logins;
+/// Queries for time records, including the overlap check.
 pub mod entries;
+/// Queries for holidays, including the bulk import from a calendar.
 pub mod holidays;
+/// Queries for the pending start.
 pub mod pending;
+/// Queries for projects.
 pub mod projects;
+/// Queries for the settings.
 pub mod settings;
 
 use anyhow::Result;

@@ -17,6 +17,7 @@ pub fn table(headers: &[&str], rows: &[Vec<String>]) {
     }
 }
 
+/// Prints one row, padding each cell to its column width. Trailing spaces are removed.
 fn print_row(cells: &[String], widths: &[usize]) {
     let line: Vec<String> = cells
         .iter()

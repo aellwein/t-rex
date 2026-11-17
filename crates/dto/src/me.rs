@@ -1,3 +1,5 @@
+//! The signed-in user, as the app header shows it.
+
 use serde::{Deserialize, Serialize};
 
 /// The signed-in user, as shown in the app header. Returned by `GET /api/v1/me`.

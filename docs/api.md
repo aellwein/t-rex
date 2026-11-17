@@ -82,7 +82,7 @@ Imports read `.ics` files and keep only all-day events. Limits:
 
 - a file may be at most 5 MB;
 - an address is fetched with a 15 second timeout;
-- an event spanning more than 366 days is rejected.
+- an event longer than 366 days adds only its first 366 days.
 
 An import reports how many holidays were added. Days that already have a holiday keep their existing entry.
 
@@ -96,3 +96,93 @@ An import reports how many holidays were added. Days that already have a holiday
 | `show_email` | Show the account's email in the header instead of its name |
 | `break_minutes` | Unpaid break per working day, in minutes; new days start with it |
 | `carry_over_minutes` | Overtime (or deficit) from before the recorded time, in signed minutes |
+
+## Examples
+
+The examples use a token from `t-rex login` (see [cli.md](cli.md#sign-in)), or a token created in the Tokens page. Set the server address and the token once:
+
+```sh
+export S=https://t-rex.example.com
+export T=trx_...
+```
+
+### Projects
+
+```sh
+curl -s -H "Authorization: Bearer $T" "$S/api/v1/projects"
+```
+
+```json
+{"items": [{"id": 1, "name": "Website", "color": "#0d9488", "archived": false}],
+ "total": 1, "limit": 50, "offset": 0}
+```
+
+Create a project. Name and colour are checked and trimmed, and the colour is stored in lower case:
+
+```sh
+curl -s -X POST -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
+  -d '{"name": "Backend", "color": "#2563EB"}' "$S/api/v1/projects"
+```
+
+`201 Created` with the new project. A name that is already used gives `409 Conflict`.
+
+### Time records
+
+A record needs a date, a start in minutes after midnight (`540` is 09:00), the booked work time in minutes, and exactly one of `project_id` and `absence_kind_id`. The break is optional and counts toward the day:
+
+```sh
+curl -s -X POST -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
+  -d '{"date": "2026-11-02", "start_minute": 540, "minutes": 450, "break_minutes": 45,
+       "project_id": 1, "note": "release"}' \
+  "$S/api/v1/time-entries"
+```
+
+The record occupies 09:00 to 17:15 (`start + minutes + break`). A second record that overlaps it on the same day gives `409 Conflict`.
+
+List the records of November, one page of 20 at a time:
+
+```sh
+curl -s -H "Authorization: Bearer $T" \
+  "$S/api/v1/time-entries?from=2026-11-01&to=2026-11-30&limit=20&offset=0"
+```
+
+Read every page with a loop, until `offset + items.len()` reaches `total`:
+
+```sh
+offset=0
+while :; do
+  page=$(curl -s -H "Authorization: Bearer $T" \
+    "$S/api/v1/time-entries?from=2026-11-01&to=2026-11-30&limit=200&offset=$offset")
+  echo "$page" | jq -r '.items[] | [.date, .minutes, .break_minutes] | @tsv'
+  offset=$((offset + $(echo "$page" | jq '.items | length')))
+  [ "$offset" -ge "$(echo "$page" | jq '.total')" ] && break
+done
+```
+
+### Errors
+
+Every error has the same shape. A blank project name, for example:
+
+```sh
+curl -s -X POST -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
+  -d '{"name": "  ", "color": "#0d9488"}' "$S/api/v1/projects"
+```
+
+```json
+{"error": "name must not be empty"}
+```
+
+with status `400 Bad Request`. A missing or invalid token gives `401 Unauthorized` with `{"error": "sign in required"}`.
+
+### Holidays from a calendar
+
+Import all-day events from a public `.ics` address. The answer says how many days were added and how many already had a holiday:
+
+```sh
+curl -s -X POST -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/holidays.ics"}' "$S/api/v1/holidays/import"
+```
+
+```json
+{"added": 12, "existing": 1}
+```

@@ -1,3 +1,6 @@
+//! The routes of the app. The pages are nested in one layout, `Shell`, which shows the header, the
+//! navigation and the sign-in check.
+
 // The `Routable` derive emits code after a call that never returns, which trips `unreachable_code`.
 // The warning comes from the generated code, so the allow covers the whole module.
 #![allow(unreachable_code)]
@@ -18,6 +21,7 @@ use crate::{api, STATE};
 
 #[derive(Routable, Clone, Debug, PartialEq)]
 #[rustfmt::skip]
+/// The routes of the app. The pages are nested in the shell layout, which shows the header and the navigation.
 pub enum Route {
     #[layout(Shell)]
         #[route("/")]

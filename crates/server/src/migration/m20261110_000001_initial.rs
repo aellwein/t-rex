@@ -7,12 +7,15 @@ use sea_orm_migration::prelude::*;
 use sea_orm_migration::sea_orm::DatabaseBackend;
 
 #[derive(DeriveMigrationName)]
+/// The first schema: projects, absence kinds, time entries, settings, pending starts and holidays.
 pub struct Migration;
 
+/// The statements that create the first schema on SQLite, read from the migration folder.
 const SQLITE_UP: &str = include_str!("../../migrations/seaorm/sqlite/m20261110_000001_initial.sql");
 const POSTGRES_UP: &str =
     include_str!("../../migrations/seaorm/postgres/m20261110_000001_initial.sql");
 
+/// The statements that drop the first schema again.
 const DOWN: &str = r#"
 DROP TABLE holidays;
 DROP TABLE pending_starts;

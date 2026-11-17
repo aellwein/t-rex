@@ -1,3 +1,5 @@
+//! The signed-in account, as the app header shows it.
+
 use axum::{Json, extract::State};
 use dto::Me;
 

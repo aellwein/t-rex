@@ -55,6 +55,7 @@ fn OverviewRow(
 }
 
 #[component]
+/// The overview of the selected day and month: the booked time per project and absence kind. See the module description.
 pub fn Overview(
     projects: Vec<Project>,
     absence_kinds: Vec<AbsenceKind>,

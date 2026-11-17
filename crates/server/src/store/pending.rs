@@ -6,6 +6,7 @@ use sea_orm::{DatabaseConnection, EntityTrait, Set, sea_query::OnConflict};
 
 use crate::entity::pending_start::{ActiveModel, Column, Entity as Pending, Model};
 
+/// Converts a stored row into the DTO. Fails if a stored number does not fit its type.
 fn from_model(model: Model) -> Result<PendingStart> {
     Ok(PendingStart {
         date: model.entry_date,

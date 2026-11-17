@@ -1,3 +1,8 @@
+//! Time records: list, create, edit and delete.
+//!
+//! Records of one day must not overlap. A record takes its break within its span, so the break counts
+//! towards the overlap as well.
+
 use axum::{
     Json,
     extract::{Path, Query, State},
@@ -56,6 +61,7 @@ async fn ensure_no_overlap(
     Ok(())
 }
 
+/// Lists the time records of the user whose day lies between `from` and `to`, both inclusive. Without them the list covers 1900-01-01 to 2999-12-31. Records are sorted by date. Answers `400` if `from` is after `to`. See [`PageQuery`] for the paging parameters.
 pub async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -74,6 +80,7 @@ pub async fn list(
     ))
 }
 
+/// Creates a time record. The input is checked, the referenced project or absence kind must be the user's, and the record must not overlap another record of the same day. Answers `201 Created`, or `409` on an overlap.
 pub async fn create(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -87,6 +94,7 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(entry)))
 }
 
+/// Returns one time record of the user, or `404 Not Found`.
 pub async fn get_one(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -98,6 +106,7 @@ pub async fn get_one(
         .ok_or(ApiError::NotFound)
 }
 
+/// Replaces a time record with the given state, after the same checks as [`create`]. The record itself is not counted in the overlap check.
 pub async fn update(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -114,6 +123,7 @@ pub async fn update(
         .ok_or(ApiError::NotFound)
 }
 
+/// Deletes a time record. Answers `204 No Content`, or `404` if the record is not the user's.
 pub async fn delete(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,

@@ -27,6 +27,7 @@ pub struct EntryRow {
 }
 
 impl EntryRow {
+    /// The text of one field for this record. Unknown names give an empty text; the parser refuses them before this is called.
     fn field(&self, name: &str) -> String {
         match name {
             "ID" => self.id.to_string(),
@@ -43,6 +44,7 @@ impl EntryRow {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+/// One piece of a column: fixed text, or a field whose value is filled in per record.
 enum Part {
     Text(String),
     Field(&'static str),
@@ -84,6 +86,7 @@ impl Template {
         }
     }
 
+    /// Renders every column of the template for one record.
     fn cells(&self, row: &EntryRow) -> Vec<String> {
         self.columns
             .iter()
@@ -112,6 +115,7 @@ fn header(column: &[Part]) -> String {
         .join(" ")
 }
 
+/// Splits one column into text and `{{.Field}}` placeholders. Fails on an unknown field or an unclosed placeholder.
 fn parse_parts(text: &str) -> Result<Vec<Part>> {
     let mut parts = Vec::new();
     let mut rest = text;
@@ -135,6 +139,7 @@ fn parse_parts(text: &str) -> Result<Vec<Part>> {
     Ok(parts)
 }
 
+/// Adds literal text to the parts, turning the two characters `\n` into a line break. Empty text is skipped.
 fn push_text(parts: &mut Vec<Part>, text: &str) {
     let text = text.replace("\\n", "\n");
     if !text.is_empty() {

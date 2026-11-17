@@ -10,6 +10,7 @@ use crate::components::ui::{
 };
 
 #[component]
+/// The projects page. See the module description.
 pub fn ProjectsPage() -> Element {
     let mut projects = use_resource(|| async { api::list_projects().await });
     let mut editing = use_signal(|| None::<i64>);

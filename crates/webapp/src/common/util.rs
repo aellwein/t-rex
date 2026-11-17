@@ -1,9 +1,14 @@
+//! Browser helpers: the window and the document, the classes of the root element, and the language the
+//! browser prefers.
+
 use crate::common::prelude::*;
 
+/// The browser window. Panics if there is none, which does not happen in a browser.
 pub fn window() -> web_sys::Window {
     web_sys::window().expect("unable to get window element")
 }
 
+/// The document of the browser window.
 pub fn document() -> web_sys::Document {
     window().document().expect("unable to get document element")
 }
@@ -13,6 +18,7 @@ pub fn prefers_dark() -> bool {
     matches!(window().match_media("(prefers-color-scheme: dark)"), Ok(Some(query)) if query.matches())
 }
 
+/// Adds the classes of `class`, separated by spaces, to the root element of the page. Dark themes use this for the `dark` class.
 pub fn set_classes(class: &str) {
     document()
         .document_element()
@@ -22,6 +28,7 @@ pub fn set_classes(class: &str) {
         .expect("unable to add class");
 }
 
+/// Removes the classes of `class`, separated by spaces, from the root element of the page.
 pub fn remove_classes(class: &str) {
     document()
         .document_element()

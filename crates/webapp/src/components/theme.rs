@@ -1,3 +1,5 @@
+//! Applying the colour theme to the page.
+
 use crate::common::prelude::*;
 
 /// Applies a colour theme: its colours become CSS variables on the root element, and dark themes

@@ -60,6 +60,7 @@ fn rfc3339(seconds: i64) -> String {
         .unwrap_or_default()
 }
 
+/// The listing view of a stored token. The hash of the secret is not part of it.
 fn info(model: &Model) -> TokenInfo {
     TokenInfo {
         id: model.id,

@@ -11,6 +11,7 @@ use sea_orm::{
 use crate::entity::holiday::{ActiveModel, Column, Entity as Holidays, Model};
 use crate::store::{Window, fetch_window, page};
 
+/// Converts a stored row into the DTO.
 fn from_model(model: Model) -> Holiday {
     Holiday {
         id: model.id,
@@ -58,6 +59,7 @@ pub async fn id_on(
     Ok(query.one(conn).await?.map(|model| model.id))
 }
 
+/// Inserts a holiday for the user and returns it with its id.
 pub async fn create(
     conn: &DatabaseConnection,
     user: &str,

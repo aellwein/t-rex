@@ -6,6 +6,7 @@ use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// The saved configuration in `config.toml`. Every field is optional: a file that is missing or empty gives the defaults.
 pub struct Config {
     /// Address of the server, for example `https://t-rex.example.com`.
     pub server: Option<String>,
@@ -21,6 +22,7 @@ pub fn path() -> Result<PathBuf> {
     Ok(dir.join("t-rex").join("config.toml"))
 }
 
+/// Reads the configuration file. A missing file is not an error: it gives the default configuration.
 pub fn load() -> Result<Config> {
     let path = path()?;
     match fs::read_to_string(&path) {

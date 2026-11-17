@@ -6,6 +6,7 @@ use sea_orm::{DatabaseConnection, EntityTrait, Set, sea_query::OnConflict};
 
 use crate::entity::setting::{ActiveModel, Column, Entity as Settings_, Model};
 
+/// Converts a stored row into the DTO. Fails if a stored value does not fit its type.
 fn from_model(model: Model) -> Result<Settings> {
     let language = Language::parse(&model.language)
         .ok_or_else(|| anyhow!("unknown language '{}' in database", model.language))?;

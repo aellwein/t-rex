@@ -10,6 +10,7 @@ use reqwest::{
 };
 use serde::{Serialize, de::DeserializeOwned};
 
+/// HTTP client for the REST API. It holds the server address and the token, and turns the answers into values or readable errors.
 pub struct Client {
     base: String,
     token: Option<String>,
@@ -17,6 +18,7 @@ pub struct Client {
 }
 
 impl Client {
+    /// A client for `server` with a 30 second timeout. The token, if any, is sent with every request.
     pub fn new(server: &str, token: Option<String>) -> Result<Self> {
         Self::with_timeout(server, token, Duration::from_secs(30))
     }
@@ -26,6 +28,7 @@ impl Client {
         Self::with_timeout(server, token, Duration::from_secs(2))
     }
 
+    /// Builds a client with the given timeout. Fails if the server address is empty, and says how to set one.
     fn with_timeout(server: &str, token: Option<String>, timeout: Duration) -> Result<Self> {
         let base = server.trim().trim_end_matches('/').to_string();
         if base.is_empty() {
@@ -39,6 +42,7 @@ impl Client {
         Ok(Self { base, token, http })
     }
 
+    /// Starts a request to `path` on the server, with the bearer token when there is one.
     fn request(&self, method: Method, path: &str) -> RequestBuilder {
         let mut request = self.http.request(method, format!("{}{}", self.base, path));
         if let Some(token) = &self.token {
@@ -47,6 +51,7 @@ impl Client {
         request
     }
 
+    /// Sends a GET request and decodes the JSON answer.
     pub fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T> {
         read_json(
             self.request(Method::GET, path)
@@ -72,6 +77,7 @@ impl Client {
         }
     }
 
+    /// Sends `body` as JSON with the given method, and decodes the JSON answer.
     pub fn send<B: Serialize, T: DeserializeOwned>(
         &self,
         method: Method,
@@ -86,6 +92,7 @@ impl Client {
         read_json(response)
     }
 
+    /// Sends a DELETE request. Fails unless the server answers with a success status.
     pub fn delete(&self, path: &str) -> Result<()> {
         let response = self
             .request(Method::DELETE, path)
@@ -111,6 +118,7 @@ pub fn post_anonymous<B: Serialize, T: DeserializeOwned>(
     read_json(response)
 }
 
+/// Reads a successful answer as JSON, or turns the error answer into an error.
 fn read_json<T: DeserializeOwned>(response: Response) -> Result<T> {
     let response = check(response)?;
     response

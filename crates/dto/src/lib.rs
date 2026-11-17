@@ -2,6 +2,32 @@
 //!
 //! Shared by the `server` (persistence and HTTP) and the `webapp` (WASM client),
 //! so this crate must stay free of server-only dependencies.
+//!
+//! # Modules
+//!
+//! - [`entry`]: time records, the time formats and the rules that turn start, end, duration and
+//!   break into a record.
+//! - [`report`]: targets, actual time, overtime and the balances of days and months.
+//! - [`calendar`]: date arithmetic for months.
+//! - [`settings`]: per-user settings and the signed-hours format of the carry-over.
+//! - [`theme`]: the built-in colour themes.
+//! - [`page`]: the paging of lists.
+//! - [`project`], [`absence`], [`holiday`]: the names that time is booked against and the days off.
+//! - [`token`], [`me`], [`version`], [`error`]: the account, the tokens and the errors of the API.
+//!
+//! # Example
+//!
+//! A working day that starts at 09:00, works 7.5 hours and takes the default 45 minute break ends
+//! at 17:15:
+//!
+//! ```
+//! use dto::{format_clock, resolve_block, DurationUnit, Settings};
+//!
+//! let settings = Settings::default();
+//! let block = resolve_block("09:00", "", "7.5", DurationUnit::Hours, settings.break_minutes)
+//!     .expect("a valid record");
+//! assert_eq!(format_clock(block.end_minute()), "17:15");
+//! ```
 
 pub mod absence;
 pub mod calendar;

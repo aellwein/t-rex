@@ -1,3 +1,8 @@
+//! Per-user settings: theme, language, working time per day, the default break, the email display and the
+//! carry-over of overtime from before the recorded time.
+//!
+//! Also the signed-hours format used for the carry-over: `+12:30` or `-1:45`.
+
 use serde::{Deserialize, Serialize};
 
 use crate::MINUTES_PER_DAY;
@@ -6,21 +11,43 @@ use crate::MINUTES_PER_DAY;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Language {
+    /// The browser's language. English if the browser's language is not supported.
     System,
+    /// English.
     En,
+    /// German.
     De,
+    /// Russian.
     Ru,
+    /// French.
     Fr,
+    /// Spanish.
     Es,
+    /// Italian.
     It,
+    /// Portuguese.
     Pt,
+    /// Dutch.
     Nl,
+    /// Polish.
     Pl,
+    /// Chinese.
     Zh,
+    /// Japanese.
     Ja,
 }
 
 impl Language {
+    /// The code of the language as the settings store it and the URLs use.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dto::Language;
+    ///
+    /// assert_eq!(Language::De.as_str(), "de");
+    /// assert_eq!(Language::System.as_str(), "system");
+    /// ```
     pub fn as_str(self) -> &'static str {
         match self {
             Language::System => "system",
@@ -38,6 +65,16 @@ impl Language {
         }
     }
 
+    /// Reads a language code. Returns `None` for a code the app does not support.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dto::Language;
+    ///
+    /// assert_eq!(Language::parse("fr"), Some(Language::Fr));
+    /// assert_eq!(Language::parse("xx"), None);
+    /// ```
     pub fn parse(value: &str) -> Option<Self> {
         match value {
             "system" => Some(Language::System),
@@ -62,6 +99,7 @@ impl Language {
 pub struct Settings {
     /// `system`, or the id of a colour theme, see [`crate::theme`].
     pub theme: String,
+    /// Display language of the web app.
     pub language: Language,
     /// Expected working time per day, in minutes.
     pub daily_minutes: u32,
@@ -76,11 +114,25 @@ pub struct Settings {
     pub carry_over_minutes: i32,
 }
 
+/// The unpaid break of a working day when nothing else is set: 45 minutes.
 fn default_break_minutes() -> u32 {
     45
 }
 
 impl Default for Settings {
+    /// The settings of a new account: the system theme, the language of the browser, 8 hours a day,
+    /// a 45 minute break and no carry-over.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dto::Settings;
+    ///
+    /// let settings = Settings::default();
+    /// assert_eq!(settings.daily_minutes, 8 * 60);
+    /// assert_eq!(settings.break_minutes, 45);
+    /// assert!(settings.validate().is_ok());
+    /// ```
     fn default() -> Self {
         Self {
             theme: crate::theme::SYSTEM.to_string(),
@@ -94,6 +146,18 @@ impl Default for Settings {
 }
 
 impl Settings {
+    /// Checks the settings: a known theme, and a break and a working day of at most 24 hours.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dto::Settings;
+    ///
+    /// let mut settings = Settings::default();
+    /// assert!(settings.validate().is_ok());
+    /// settings.theme = "no-such-theme".into();
+    /// assert!(settings.validate().is_err());
+    /// ```
     pub fn validate(&self) -> Result<(), String> {
         if !crate::theme::is_known(&self.theme) {
             return Err(format!("unknown theme '{}'", self.theme));
@@ -109,6 +173,20 @@ impl Settings {
 }
 
 /// Parses a signed amount of hours into minutes: `12:30`, `-1:45`, `+2,5`, `-1.25`.
+/// Parses an amount of hours with a sign into minutes. Accepts `H:MM`, decimal hours with `.` or `,`,
+/// and an optional `+` or `-` in front. Minutes after `:` must be below 60.
+///
+/// # Examples
+///
+/// ```
+/// use dto::parse_signed_hours;
+///
+/// assert_eq!(parse_signed_hours("12:30"), Some(750));
+/// assert_eq!(parse_signed_hours("-1:45"), Some(-105));
+/// assert_eq!(parse_signed_hours("+2,5"), Some(150));
+/// assert_eq!(parse_signed_hours("-1.25"), Some(-75));
+/// assert_eq!(parse_signed_hours("1:60"), None);
+/// ```
 pub fn parse_signed_hours(text: &str) -> Option<i32> {
     let text = text.trim();
     let (negative, rest) = match text.strip_prefix('-') {
@@ -137,6 +215,17 @@ pub fn parse_signed_hours(text: &str) -> Option<i32> {
 }
 
 /// Formats signed minutes as hours, e.g. `+12:30` or `-1:45`. Zero has no sign.
+/// Formats signed minutes as `H:MM` with a sign. Zero has no sign.
+///
+/// # Examples
+///
+/// ```
+/// use dto::format_signed_hours;
+///
+/// assert_eq!(format_signed_hours(750), "+12:30");
+/// assert_eq!(format_signed_hours(-105), "-1:45");
+/// assert_eq!(format_signed_hours(0), "0:00");
+/// ```
 pub fn format_signed_hours(minutes: i32) -> String {
     let sign = match minutes.cmp(&0) {
         std::cmp::Ordering::Less => "-",

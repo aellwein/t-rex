@@ -10,6 +10,7 @@ use crate::components::ui::{
 };
 
 #[component]
+/// The absence kinds page. See the module description.
 pub fn AbsencesPage() -> Element {
     let mut kinds = use_resource(|| async { api::list_absence_kinds().await });
     let mut editing = use_signal(|| None::<i64>);

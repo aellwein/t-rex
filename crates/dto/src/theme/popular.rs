@@ -1,5 +1,5 @@
 //! Well-known colour themes, with colours taken from the MIT-licensed theme collection
-//! lookiyam-94/trilium-themes (https://github.com/lookiyam-94/trilium-themes). Only the colour
+//! lookiyam-94/trilium-themes (<https://github.com/lookiyam-94/trilium-themes>). Only the colour
 //! values are used, mapped onto the palette tokens the same way as the Catppuccin themes.
 
 use super::{mix, theme_from_pairs, ThemeInfo};
@@ -21,6 +21,7 @@ struct Palette {
     cyan: &'static str,
 }
 
+/// The sixteen popular themes as source colours. [`to_theme`] maps each one onto the palette tokens.
 const PALETTES: [Palette; 16] = [
     Palette {
         id: "black-sand",
@@ -269,6 +270,8 @@ pub(super) fn themes() -> Vec<ThemeInfo> {
     PALETTES.iter().map(to_theme).collect()
 }
 
+/// Maps the source colours of one theme onto the palette tokens. Dark and light themes are mapped
+/// separately, so that the text stays readable on the background in both.
 fn to_theme(p: &Palette) -> ThemeInfo {
     let pairs: Vec<(&str, String)> = if p.dark {
         vec![

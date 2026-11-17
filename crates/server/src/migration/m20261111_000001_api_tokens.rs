@@ -4,6 +4,7 @@ use sea_orm_migration::prelude::*;
 use sea_orm_migration::sea_orm::DatabaseBackend;
 
 #[derive(DeriveMigrationName)]
+/// Adds the `api_tokens` table, so command line clients can sign in with a token.
 pub struct Migration;
 
 const SQLITE_UP: &str =

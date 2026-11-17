@@ -47,6 +47,7 @@ fn fetch(request: impl FnOnce(&Client) -> Result<Vec<String>>) -> Vec<String> {
     request(&client).unwrap_or_default()
 }
 
+/// Keeps the names that start with what is typed so far, ignoring case.
 fn matching(names: Vec<String>, current: &OsStr) -> Vec<CompletionCandidate> {
     let prefix = current.to_string_lossy().to_lowercase();
     names

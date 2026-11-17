@@ -1,3 +1,5 @@
+//! Error responses. Each [`ApiError`] variant has one status code and a JSON body with the reason.
+
 use axum::{
     Json,
     http::StatusCode,
@@ -5,6 +7,7 @@ use axum::{
 };
 use dto::ErrorBody;
 
+/// The result of an API handler: its value, or the error that becomes the response.
 pub type ApiResult<T> = Result<T, ApiError>;
 
 /// Errors a handler can return. Each maps to one HTTP status code.

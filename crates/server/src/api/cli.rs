@@ -27,6 +27,7 @@ use crate::store::cli_logins;
 const CODE_LIFETIME: Duration = Duration::from_secs(120);
 
 #[derive(Debug, Deserialize)]
+/// The query of the browser login: the local port of the command line client and the `state` value it sent. The state is sent back unchanged, so the client can check the answer.
 pub struct LoginQuery {
     port: u16,
     state: String,
@@ -96,6 +97,7 @@ pub async fn exchange(
     Ok((StatusCode::CREATED, Json(created)))
 }
 
+/// Encodes bytes as URL-safe base64 without padding.
 fn base64_url(bytes: &[u8]) -> String {
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
 }

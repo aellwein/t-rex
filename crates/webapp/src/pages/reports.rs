@@ -23,6 +23,7 @@ use crate::components::ui::{BUTTON, CARD, ERROR_TEXT, INPUT, LABEL, PAGE_TITLE};
 use crate::STATE;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+/// The views of the reports page: by project, by month, by year, and by day.
 enum Mode {
     Project,
     Month,
@@ -47,6 +48,7 @@ struct Period {
     contains: Box<dyn Fn(NaiveDate) -> bool>,
 }
 
+/// Sums the minutes of the entries that fall in the period and match `belongs`.
 fn sum_where(
     entries: &[TimeEntry],
     in_period: &dyn Fn(NaiveDate) -> bool,
@@ -60,6 +62,7 @@ fn sum_where(
 }
 
 impl Line {
+    /// The minutes of this line in the entries of the period.
     fn minutes(self, entries: &[TimeEntry], in_period: &dyn Fn(NaiveDate) -> bool) -> u32 {
         match self {
             Line::Project(id) => sum_where(entries, in_period, |e| e.project_id == Some(id)),
@@ -114,6 +117,7 @@ fn visible_lines(
     lines
 }
 
+/// A table cell: the minutes as `h:mm`, or a dash for zero.
 fn cell(minutes: u32) -> String {
     if minutes == 0 {
         "–".to_string()
@@ -257,6 +261,7 @@ fn table_by_line(
 }
 
 #[component]
+/// The reports page. See the module description.
 pub fn ReportsPage() -> Element {
     let projects = use_resource(|| async { api::list_projects().await });
     let kinds = use_resource(|| async { api::list_absence_kinds().await });

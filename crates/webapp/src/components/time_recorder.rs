@@ -60,6 +60,7 @@ enum Problem {
     Failed(String),
 }
 
+/// The message for a time record that cannot be saved, in the current language.
 fn block_error_text(error: BlockError) -> String {
     match error {
         BlockError::StartMissing => t!("err-start-missing"),
@@ -118,6 +119,7 @@ fn parse_break(text: &str) -> Option<u32> {
 }
 
 #[component]
+/// The form to book a time record on the selected day, and the records of that day. See the module description.
 pub fn TimeRecorder(
     date: NaiveDate,
     day_entries: Vec<TimeEntry>,
