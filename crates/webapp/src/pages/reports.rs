@@ -10,8 +10,9 @@ use dioxus::prelude::*;
 use dioxus_i18n::t;
 use dto::calendar::add_months;
 use dto::{
-    actual_minutes, break_total, daily_balances, format_signed_hours, running_overtime,
-    tracking_start, weekdays_between, AbsenceKind, MonthBalance, Project, Settings, TimeEntry,
+    actual_minutes, break_total, daily_balances, format_clock, format_signed_hours,
+    running_overtime, tracking_start, weekdays_between, AbsenceKind, MonthBalance, Project,
+    Settings, TimeEntry,
 };
 
 use crate::api;
@@ -27,6 +28,7 @@ enum Mode {
     Month,
     Year,
     Day,
+    Details,
 }
 
 /// One line of a report: a project, an absence kind, or a total over all of them.
@@ -271,6 +273,7 @@ pub fn ReportsPage() -> Element {
     let mode_month = t!("report-by-month");
     let mode_year = t!("report-by-year");
     let mode_day = t!("report-by-day");
+    let mode_details = t!("report-by-details");
     let date_label = t!("report-date");
     let difference_label = t!("report-difference");
     let export_label = t!("report-export-pdf");
@@ -439,6 +442,7 @@ pub fn ReportsPage() -> Element {
         Mode::Month => "month",
         Mode::Year => "year",
         Mode::Day => "day",
+        Mode::Details => "details",
     };
 
     // Per day of the selected month: target, actual, difference and the running overtime.
@@ -488,8 +492,180 @@ pub fn ReportsPage() -> Element {
         }
     };
 
+    // Monthly detail: every booking of the selected month, day by day, then the totals of the month.
+    let in_month = move |d: NaiveDate| d.year() == selected_year && d.month() == month_pick();
+    let details_body = {
+        let mut month_entries: Vec<TimeEntry> = entries_now
+            .iter()
+            .filter(|entry| in_month(entry.date))
+            .cloned()
+            .collect();
+        month_entries
+            .sort_by_key(|entry| (entry.date, entry.start_minute.unwrap_or(u32::MAX), entry.id));
+        if month_entries.is_empty() {
+            let none_text = t!("report-no-entries");
+            rsx! { p { class: "text-neutral-500", {none_text} } }
+        } else {
+            let weekdays = [
+                t!("Monday"),
+                t!("Tuesday"),
+                t!("Wednesday"),
+                t!("Thursday"),
+                t!("Friday"),
+                t!("Saturday"),
+                t!("Sunday"),
+            ];
+            let col_time = t!("report-col-time");
+            let col_duration = t!("report-col-duration");
+            let col_note = t!("report-col-note");
+            let col_line = t!("report-line");
+            let work_label = t!("report-work");
+            let absences_label = t!("report-absences");
+            let break_label = t!("report-break");
+            let totals_title = t!("report-details-totals");
+
+            let mut days: Vec<NaiveDate> = month_entries.iter().map(|entry| entry.date).collect();
+            days.dedup();
+            let day_sections: Vec<Element> = days
+                .iter()
+                .map(|&day| {
+                    let day_entries: Vec<&TimeEntry> =
+                        month_entries.iter().filter(|entry| entry.date == day).collect();
+                    let work: u32 = day_entries
+                        .iter()
+                        .filter(|entry| entry.project_id.is_some())
+                        .map(|entry| entry.minutes)
+                        .sum();
+                    let absence: u32 = day_entries
+                        .iter()
+                        .filter(|entry| entry.absence_kind_id.is_some())
+                        .map(|entry| entry.minutes)
+                        .sum();
+                    let breaks: u32 = day_entries.iter().map(|entry| entry.break_minutes).sum();
+                    let heading = format!(
+                        "{} {}",
+                        weekdays[day.weekday().num_days_from_monday() as usize],
+                        day.format("%d.%m.%Y")
+                    );
+                    let rows: Vec<Element> = day_entries
+                        .iter()
+                        .map(|entry| {
+                            let (name, color) = match entry.project_id {
+                                Some(id) => line_label(Line::Project(id), &projects_now, &kinds_now),
+                                None => line_label(
+                                    Line::Absence(entry.absence_kind_id.unwrap_or(0)),
+                                    &projects_now,
+                                    &kinds_now,
+                                ),
+                            };
+                            let time = match entry.start_minute {
+                                Some(start) => format!(
+                                    "{}–{}",
+                                    format_clock(start),
+                                    format_clock(start + entry.minutes + entry.break_minutes)
+                                ),
+                                None => "–".to_string(),
+                            };
+                            let duration = format_duration(entry.minutes);
+                            let break_text = cell(entry.break_minutes);
+                            let note = entry.note.clone();
+                            rsx! {
+                                tr { class: "border-t border-neutral-200 dark:border-neutral-600",
+                                    td { class: "px-2 py-1 whitespace-nowrap tabular-nums", {time} }
+                                    td { class: "px-2 py-1 whitespace-nowrap",
+                                        span { class: "inline-flex items-center gap-2",
+                                            if let Some(color) = color {
+                                                span { class: "inline-block h-3 w-3 rounded-full", style: "background-color: {color}" }
+                                            }
+                                            {name}
+                                        }
+                                    }
+                                    td { class: "px-2 py-1 text-right tabular-nums", {duration} }
+                                    td { class: "px-2 py-1 text-right tabular-nums", {break_text} }
+                                    td { class: "px-2 py-1", {note} }
+                                }
+                            }
+                        })
+                        .collect();
+                    let summary = format!(
+                        "{}: {}  ·  {}: {}  ·  {}: {}",
+                        work_label.clone(),
+                        format_duration(work),
+                        absences_label.clone(),
+                        format_duration(absence),
+                        break_label.clone(),
+                        format_duration(breaks)
+                    );
+                    rsx! {
+                        section { class: "break-inside-avoid",
+                            h3 { class: "font-bold mb-1", {heading} }
+                            table { class: "min-w-full text-sm border-collapse",
+                                thead {
+                                    tr { class: "border-b border-neutral-400 dark:border-neutral-500",
+                                        th { class: "px-2 py-1 text-left font-medium", {col_time.clone()} }
+                                        th { class: "px-2 py-1 text-left font-medium", {col_line.clone()} }
+                                        th { class: "px-2 py-1 text-right font-medium", {col_duration.clone()} }
+                                        th { class: "px-2 py-1 text-right font-medium", {break_label.clone()} }
+                                        th { class: "px-2 py-1 text-left font-medium", {col_note.clone()} }
+                                    }
+                                }
+                                tbody { {rows.into_iter()} }
+                            }
+                            p { class: "mt-1 text-sm text-neutral-500 dark:text-neutral-400 tabular-nums", {summary} }
+                        }
+                    }
+                })
+                .collect();
+
+            // Totals of the month, per project and absence kind, with the same lines as the other views.
+            let month_period = [Period {
+                label: String::new(),
+                contains: Box::new(in_month),
+            }];
+            let month_lines = visible_lines(&projects_now, &kinds_now, &entries_now, &month_period);
+            let total_rows: Vec<Element> = month_lines
+                .iter()
+                .map(|line| {
+                    let (name, color) = line_label(*line, &projects_now, &kinds_now);
+                    let text = cell(line.minutes(&entries_now, &in_month));
+                    let is_total = matches!(line, Line::Work | Line::Absences | Line::Break);
+                    let row_class = if is_total {
+                        "border-t-2 border-neutral-400 dark:border-neutral-500"
+                    } else {
+                        "border-t border-neutral-200 dark:border-neutral-600"
+                    };
+                    rsx! {
+                        tr { class: row_class,
+                            th { class: "px-2 py-1 text-left font-medium whitespace-nowrap",
+                                span { class: "inline-flex items-center gap-2",
+                                    if let Some(color) = color {
+                                        span { class: "inline-block h-3 w-3 rounded-full", style: "background-color: {color}" }
+                                    }
+                                    {name}
+                                }
+                            }
+                            td { class: "px-2 py-1 text-right tabular-nums font-bold", {text} }
+                        }
+                    }
+                })
+                .collect();
+
+            rsx! {
+                div { class: "flex flex-col gap-6", {day_sections.into_iter()} }
+                section { class: "mt-6",
+                    h2 { class: "font-bold mb-1", {totals_title} }
+                    table { class: "min-w-full text-sm border-collapse",
+                        tbody { {total_rows.into_iter()} }
+                    }
+                }
+            }
+        }
+    };
+
     let body = if current_mode == Mode::Day {
         day_body
+    } else if current_mode == Mode::Details {
+        details_body
     } else if entries_now.is_empty() && load_error.is_none() {
         rsx! { p { class: "text-neutral-500", {none_yet} } }
     } else {
@@ -521,7 +697,7 @@ pub fn ReportsPage() -> Element {
                     &entries_now,
                 )
             }
-            Mode::Day => rsx! {},
+            Mode::Day | Mode::Details => rsx! {},
             Mode::Year => {
                 let lines = visible_lines(&projects_now, &kinds_now, &entries_now, &year_periods);
                 table_by_period(
@@ -548,6 +724,7 @@ pub fn ReportsPage() -> Element {
                                 "project" => Mode::Project,
                                 "year" => Mode::Year,
                                 "day" => Mode::Day,
+                                "details" => Mode::Details,
                                 _ => Mode::Month,
                             });
                         },
@@ -555,9 +732,10 @@ pub fn ReportsPage() -> Element {
                         option { value: "month", selected: mode_value == "month", {mode_month} }
                         option { value: "year", selected: mode_value == "year", {mode_year} }
                         option { value: "day", selected: mode_value == "day", {mode_day} }
+                        option { value: "details", selected: mode_value == "details", {mode_details} }
                     }
                 }
-                if current_mode == Mode::Day {
+                if current_mode == Mode::Day || current_mode == Mode::Details {
                     select {
                         class: INPUT,
                         onchange: move |evt| {
