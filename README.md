@@ -1,6 +1,6 @@
 # 🦖 t-rex - Time Recordings
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/t-rex)](https://artifacthub.io/packages/search?repo=t-rex)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/t-rex)](https://artifacthub.io/packages/helm/t-rex/t-rex)
 [![Latest release](https://img.shields.io/github/v/release/aellwein/t-rex)](https://github.com/aellwein/t-rex/releases/latest)
 
 Track the time you spend on projects and your time off (absences), day by day. A responsive web app, a command line client and a REST API share one server.
