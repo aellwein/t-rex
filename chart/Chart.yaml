@@ -22,10 +22,10 @@ annotations:
   artifacthub.io/containsSecurityUpdates: "false"
   # kinds: added, changed, deprecated, removed, fixed, security.
   artifacthub.io/changes: |
+    - kind: fixed
+      description: "colour themes no longer list Nord twice"
     - kind: changed
-      description: "command line client: times as hh:mm, entry list paged (--limit, --offset, --all), --format for table, json or templates"
-    - kind: changed
-      description: "documentation: code docs, API and configuration examples; the server behaves as in 1.0.3"
+      description: "dependency updates: rand (server), gloo-net (web app), clap and clap_complete (command line client)"
   artifacthub.io/signKey: |
     fingerprint: "FA1F0CE58313D2638809BD05D51650A7D1BE5944"
     url: https://gist.githubusercontent.com/aellwein/112e7c157c4f60165b62602b2b62c2d7/raw/491cc2925f43ddb015d63c95f5ea2bca1f281c8c/pubkey.asc
