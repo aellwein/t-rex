@@ -22,7 +22,7 @@ struct Palette {
 }
 
 /// The sixteen popular themes as source colours. [`to_theme`] maps each one onto the palette tokens.
-const PALETTES: [Palette; 16] = [
+const PALETTES: [Palette; 15] = [
     Palette {
         id: "black-sand",
         name: "Black Sand",
@@ -187,21 +187,6 @@ const PALETTES: [Palette; 16] = [
         accent: "#78824b",
         red: "#685742",
         cyan: "#c9a554",
-    },
-    Palette {
-        id: "nord",
-        name: "Nord",
-        dark: true,
-        bg: "#2e3440",
-        bg_dark: "#222730",
-        bg_light: "#3b4252",
-        fg: "#d8dee9",
-        fg_dim: "#667080",
-        muted: "#4c566a",
-        selection: "#434c5e",
-        accent: "#81a1c1",
-        red: "#bf616a",
-        cyan: "#88c0d0",
     },
     Palette {
         id: "nothing",
