@@ -50,7 +50,7 @@ jobs:
 
       # The server build runs `dx bundle` to embed the web app, so the Dioxus CLI must be on the PATH.
       - name: Install Dioxus CLI
-        uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
+        uses: taiki-e/install-action@ab49d3c64680143e184118bed66a46419fc15519 # v2.90.5
         with:
           tool: dioxus-cli@0.7.10
 
