@@ -9,7 +9,7 @@ rust-embed = "8.14.0"
 mime_guess = { version = "2.0.5" }
 tokio = { version = "1.54.1", features = ["full"] }
 anyhow = "1.0.104"
-pretty_env_logger = "0.5.0"
+pretty_env_logger = "0.6.0"
 log = "0.4.35"
 dotenvy = "0.15.7"
 axum-oidc-client = "0.7.0"
