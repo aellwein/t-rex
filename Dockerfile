@@ -36,7 +36,7 @@ RUN --mount=type=cache,id=t-rex-cargo-registry,target=/opt/cargo/registry \
 
 # Runtime: distroless static, the server is a static binary. It has CA certificates and a non-root
 # user, but no shell or package manager. Pinned by digest so updates are proposed by Dependabot.
-FROM gcr.io/distroless/static-debian13:nonroot@sha256:aafe993665bf6200db38a02c11a9351e782a84b6a45e7f33b6695638c88e3931 AS runtime
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:8ce6dd87e9823c5b48dcfb2c8604714ccb351ce59607327bcc4957448da279b5 AS runtime
 LABEL org.opencontainers.image.source="https://github.com/aellwein/t-rex"
 LABEL org.opencontainers.image.licenses="MIT"
 COPY --from=builder /server /usr/local/bin/server
